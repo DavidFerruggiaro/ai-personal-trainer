@@ -1,0 +1,231 @@
+AI Personal Trainer — Squat MVP PRD
+1. Overview
+
+The Squat MVP is the first shippable version of the AI Personal Trainer. It demonstrates real-time movement analysis for a single exercise — the squat — including rep counting, form feedback, overlays, and a clean user experience.
+
+This MVP is built in Streamlit as a temporary development UI, but all functionality and constraints must be designed with an eventual mobile hybrid architecture in mind (React Native UI + native camera + native inference modules).
+
+The goal is to ship a polished, reliable, impressive demo.
+
+2. MVP Goals
+
+Accurate rep counting (≥90% accuracy on consistent side-view footage).
+
+Real-time form feedback (depth, torso lean, knee valgus).
+
+Consistent overlays that render without flicker or failure.
+
+Responsive UI with video feed + count + cues.
+
+Session summary showing reps, set count, and basic tags (explosive / good / grind).
+
+Mobile-aware pipeline, meaning the code is structured such that moving to a mobile app later requires minimal re-engineering of logic.
+
+3. Non-Goals
+
+The MVP does not include:
+
+Multiple exercises
+
+3D pose estimation
+
+Cloud accounts or user login
+
+Native mobile app distribution
+
+Voice coaching
+
+Velocity-based programming
+
+Elite fatigue modeling
+
+These belong to the full product vision but are out of scope for the MVP.
+
+4. User Flow (MVP)
+
+User opens the Streamlit app.
+
+App displays camera guidance:
+
+“Position camera at hip height.”
+
+“Face sideways.”
+
+“Move closer/farther as needed.”
+
+User begins squatting.
+
+App performs:
+
+Pose detection
+
+Rep logic
+
+Real-time feedback (text labels)
+
+Overlays appear consistently
+
+Session ends:
+
+User sees rep count
+
+Labels per rep
+
+Simple text summary
+
+This experience must feel clean, stable, and trustworthy.
+
+5. Functional Requirements
+5.1 Pose Detection
+
+Use MediaPipe Pose with smoothing (Savitzky–Golay).
+
+Maintain consistent joint-index mapping.
+
+Fail gracefully when joints not detected.
+
+5.2 Rep Counting
+
+State machine:
+Top → Descending → Bottom → Ascending → Lockout
+
+Conditions:
+
+Hip < knee = depth threshold
+
+Lockout velocity > small threshold
+
+No rep = no double-counting or jitter false positives
+
+5.3 Form Feedback
+
+At minimum:
+
+Depth: hit depth or not
+
+Torso angle: too far forward
+
+Knee valgus: inward collapse beyond threshold
+
+Rep quality tag: explosive / good / grind
+
+5.4 Overlays
+
+Must render consistently at 20+ FPS:
+
+Skeleton
+
+Key angle lines
+
+Depth bar
+
+Rep count
+
+Live feedback text
+
+5.5 Session Summary
+
+At end:
+
+Total reps
+
+Rep quality distribution
+
+Basic notes from form feedback
+
+6. Technical Requirements
+6.1 Performance
+
+Real-time video with no >200ms delay.
+
+Overlay render pipeline must not block inference.
+
+Use frame skipping if needed to maintain smooth UI.
+
+6.2 Code Architecture (MVP Folder Structure)
+/core
+  rep_counter.py
+  form_feedback.py
+  smoothing.py
+  pose_pipeline.py
+
+/ui
+  streamlit_app.py
+  overlay_renderer.py
+  camera_guidance.py
+
+/utils
+  math_utils.py
+  session_logger.py
+
+main.py
+
+6.3 Mobile-Aware Design Notes
+
+Even though UI is Streamlit:
+
+Keep all logic platform-agnostic.
+
+Avoid Streamlit-specific logic inside core modules.
+
+Prepare functions to be called from RN-native bridges later.
+
+7. Success Metrics (MVP)
+Technical
+
+Rep detection accuracy ≥ 90%
+
+Overlay rendering ≥ 20 FPS
+
+Zero crashes on normal squat sessions
+
+<10% dropped frames
+
+User Experience
+
+Clear feedback
+
+Overlays never disappear
+
+Camera guidance reduces “bad angle” cases
+
+8. Risks & Mitigations
+
+Risk: Pose tracking instability →
+Solution: Smoothing + angle thresholding.
+
+Risk: Overlays flickering →
+Solution: Move overlay rendering to separate pipeline.
+
+Risk: Mobile transition complexity →
+Solution: Keep all core logic in /core.
+
+9. MVP Delivery Checklist
+
+ Rep counter stable
+
+ Overlays consistent
+
+ Form feedback minimal but accurate
+
+ Streamlit UI simple and reliable
+
+ Session summary working
+
+ Camera guidance implemented
+
+ Codebase cleaned + aligned to PRD
+
+10. Next Steps After MVP
+
+Begin React Native scaffolding
+
+Build native camera & inference module
+
+Migrate Python logic to ONNX-compatible functions
+
+Start Deadlift module
+
+Introduce basic fatigue modeling
+
+End of MVP PRD

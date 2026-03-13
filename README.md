@@ -21,8 +21,10 @@ A real-time squat analysis application using computer vision and pose detection.
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.12
 - pip
+
+Note: This Squat MVP currently uses the legacy MediaPipe Solutions API (`mp.solutions.pose`). For compatibility, run it with Python 3.12 and `mediapipe==0.10.21` from [requirements.txt](/Users/lab/AI_Lab/projects/ai_personal_trainer/squat_mvp/requirements.txt).
 
 ### Setup
 

@@ -376,7 +376,8 @@ class RepCounter:
         )
 
         if (self._rep_ready and self._exited_depth and depth_duration_ok and
-                self._set_armed and not self._rep_consumed and not cooldown_active):
+                self._set_armed and not self._rep_consumed and not cooldown_active and
+                pose_valid and motion_valid):
             self.rep_count += 1
             rep_completed = True
             self._last_rep_timestamp = timestamp

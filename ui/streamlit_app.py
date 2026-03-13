@@ -152,6 +152,31 @@ def render_live_stats(rep_count: int, phase: SquatPhase, feedback: FormAnalysis)
             st.markdown(f"❌ {feedback.valgus_message}")
 
 
+def select_visible_leg_angle(landmarks):
+    """Use the more visible leg for knee-angle measurements."""
+    left_leg = (
+        landmarks[LEFT_HIP],
+        landmarks[LEFT_KNEE],
+        landmarks[LEFT_ANKLE],
+    )
+    right_leg = (
+        landmarks[RIGHT_HIP],
+        landmarks[RIGHT_KNEE],
+        landmarks[RIGHT_ANKLE],
+    )
+
+    left_visibility = min(joint[2] for joint in left_leg)
+    right_visibility = min(joint[2] for joint in right_leg)
+
+    selected_leg = left_leg if left_visibility >= right_visibility else right_leg
+
+    return calculate_angle(
+        selected_leg[0][:2],
+        selected_leg[1][:2],
+        selected_leg[2][:2],
+    )
+
+
 def process_video(uploaded_file, settings: dict):
     """Process uploaded video and analyze squat form."""
     st.session_state.processing = True
@@ -257,12 +282,8 @@ def process_video(uploaded_file, settings: dict):
                 left_ankle = landmarks[LEFT_ANKLE]
                 right_ankle = landmarks[RIGHT_ANKLE]
 
-                # Calculate knee angle (using right side for side view)
-                knee_angle = calculate_angle(
-                    right_hip[:2],
-                    right_knee[:2],
-                    right_ankle[:2],
-                )
+                # Use the clearest leg each frame so side-view clips work from either direction.
+                knee_angle = select_visible_leg_angle(landmarks)
 
                 # Average positions
                 hip_y = (left_hip[1] + right_hip[1]) / 2

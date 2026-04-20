@@ -159,7 +159,7 @@ def run_one(video_path: Path) -> dict:
             frames_in_rep = 0
 
     cap.release()
-    pipeline.close()
+    pipeline.cleanup()
 
     total_reps = rep_counter.rep_count
     good_reps = sum(

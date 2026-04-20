@@ -342,7 +342,9 @@ class RepCounter:
         if self.phase in (SquatPhase.DESCENDING, SquatPhase.BOTTOM, SquatPhase.ASCENDING):
             self.min_knee_angle_this_rep = min(self.min_knee_angle_this_rep, knee_angle)
 
-        # Check depth (hip below or at knee level)
+        # Check depth (hip below or at knee level). This is a secondary signal
+        # that only works for side-view footage — on front/angled views the
+        # hip-vs-knee screen geometry doesn't line up even at parallel depth.
         hip_below_knee = hip_y >= (knee_y + self.depth_threshold)
         if hip_below_knee and self.phase in (SquatPhase.DESCENDING, SquatPhase.BOTTOM):
             self.depth_reached_this_rep = True
@@ -360,6 +362,12 @@ class RepCounter:
                 self._depth_entry_timestamp = timestamp
             self._rep_ready = True
             self._exited_depth = False  # Reset exit flag when entering depth
+            # Keep the summary metric aligned with the counter's ground truth:
+            # if the knee-angle gate armed, this rep reached depth for counting
+            # purposes. Without this, front-view reps got counted but the
+            # session summary labeled them "SHALLOW" because the hip-vs-knee
+            # screen-geometry check never fired.
+            self.depth_reached_this_rep = True
 
         # Track depth exit: knee angle rises above lockout threshold after depth was achieved
         # This is independent of phase state machine - works even if pose landmarks drop

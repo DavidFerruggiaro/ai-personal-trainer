@@ -36,14 +36,10 @@ st.set_page_config(
 
 def init_session_state():
     """Initialize Streamlit session state variables."""
-    if "session_active" not in st.session_state:
-        st.session_state.session_active = False
     if "session_complete" not in st.session_state:
         st.session_state.session_complete = False
     if "session_logger" not in st.session_state:
         st.session_state.session_logger = SessionLogger()
-    if "last_results" not in st.session_state:
-        st.session_state.last_results = None
     if "processing" not in st.session_state:
         st.session_state.processing = False
 
@@ -338,7 +334,6 @@ def process_video(uploaded_file, settings: dict, video_display):
     )
     
     # Rep tracking for form aggregation
-    rep_start_frame = 0
     torso_issues_in_rep = 0
     valgus_issues_in_rep = 0
     frames_in_rep = 0
@@ -503,7 +498,6 @@ def process_video(uploaded_file, settings: dict, video_display):
                     ))
 
                     # Reset rep tracking
-                    rep_start_frame = frame_count
                     torso_issues_in_rep = 0
                     valgus_issues_in_rep = 0
                     frames_in_rep = 0

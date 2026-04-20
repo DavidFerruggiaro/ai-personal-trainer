@@ -1,4 +1,18 @@
 .venv/
+.venv-py314-backup/
+venv/
 __pycache__/
 *.pyc
+*.pyo
 .DS_Store
+.idea/
+.vscode/
+
+# Streamlit / upload cache
+.streamlit/secrets.toml
+
+# Sample videos — keep these out of git until we intentionally curate a demo-assets folder
+*.mp4
+*.mov
+*.avi
+*.mkv

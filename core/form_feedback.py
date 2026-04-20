@@ -11,7 +11,7 @@ import os
 # Add parent directory for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.math_utils import calculate_vertical_angle, distance_2d
+from utils.math_utils import calculate_vertical_angle
 from .pose_pipeline import (
     LEFT_SHOULDER, RIGHT_SHOULDER,
     LEFT_HIP, RIGHT_HIP,

@@ -7,7 +7,9 @@ import streamlit as st
 import cv2
 import numpy as np
 import tempfile
-import time
+import json
+import shutil
+import subprocess
 from pathlib import Path
 import sys
 import os
@@ -177,15 +179,106 @@ def select_visible_leg_angle(landmarks):
     )
 
 
-def process_video(uploaded_file, settings: dict):
+def get_video_rotation_degrees(video_path: str) -> int:
+    """Read container rotation metadata so mobile uploads stay upright in OpenCV.
+
+    Returns 0 (assume upright) if ffprobe is not installed. The caller should
+    surface a one-time warning so users know why mobile-captured clips may look
+    rotated — see `warn_once_if_ffprobe_missing`.
+    """
+    ffprobe_path = shutil.which("ffprobe")
+    if not ffprobe_path:
+        return 0
+
+    command = [
+        ffprobe_path,
+        "-v",
+        "error",
+        "-print_format",
+        "json",
+        "-show_entries",
+        "stream_tags=rotate:stream_side_data=rotation",
+        "-select_streams",
+        "v:0",
+        video_path,
+    ]
+
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        payload = json.loads(result.stdout or "{}")
+    except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
+        return 0
+
+    streams = payload.get("streams") or []
+    if not streams:
+        return 0
+
+    stream = streams[0]
+    rotation_value = (stream.get("tags") or {}).get("rotate")
+
+    if rotation_value is None:
+        for side_data in stream.get("side_data_list") or []:
+            if "rotation" in side_data:
+                rotation_value = side_data["rotation"]
+                break
+
+    try:
+        return int(round(float(rotation_value))) % 360
+    except (TypeError, ValueError):
+        return 0
+
+
+def warn_once_if_ffprobe_missing() -> None:
+    """Show a single-session warning when ffprobe is unavailable.
+
+    Without ffprobe we cannot read container rotation metadata, so videos shot
+    in portrait on a phone may be analyzed sideways. Emitted once per session
+    rather than per-video to avoid nagging.
+    """
+    if st.session_state.get("_ffprobe_warned"):
+        return
+    if shutil.which("ffprobe") is None:
+        st.warning(
+            "ffprobe not found on PATH — video rotation metadata will be "
+            "ignored. If a portrait-mode phone clip looks sideways, install "
+            "ffmpeg (`brew install ffmpeg`) and re-upload."
+        )
+    st.session_state["_ffprobe_warned"] = True
+
+
+def apply_video_rotation(frame: np.ndarray, rotation_degrees: int) -> np.ndarray:
+    """Physically rotate decoded frames so analysis and display match browser preview."""
+    if rotation_degrees == 90:
+        return cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    if rotation_degrees == 180:
+        return cv2.rotate(frame, cv2.ROTATE_180)
+    if rotation_degrees == 270:
+        return cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+    return frame
+
+
+def process_video(uploaded_file, settings: dict, video_display):
     """Process uploaded video and analyze squat form."""
     st.session_state.processing = True
     st.session_state.session_complete = False
 
-    # Save uploaded file to temp location
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+    # Save uploaded file to temp location. Preserve the original suffix
+    # (.mov / .avi / .mkv) so OpenCV's container-sniffing stays happy — writing
+    # a .mov into a .mp4 wrapper made some iOS uploads fail to open.
+    original_name = getattr(uploaded_file, "name", "") or ""
+    suffix = Path(original_name).suffix.lower() or ".mp4"
+    if suffix not in {".mp4", ".mov", ".avi", ".mkv"}:
+        suffix = ".mp4"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(uploaded_file.read())
         video_path = tmp.name
+    warn_once_if_ffprobe_missing()
+    rotation_degrees = get_video_rotation_degrees(video_path)
 
     # Initialize components
     pipeline = PosePipeline(smoothing_window=settings["smoothing_window"])
@@ -229,7 +322,7 @@ def process_video(uploaded_file, settings: dict):
     # UI elements
     progress_bar = st.progress(0)
     status_text = st.empty()
-    frame_display = st.empty()
+    frame_display = video_display
     
     # Stats display
     col1, col2 = st.columns([3, 1])
@@ -255,7 +348,9 @@ def process_video(uploaded_file, settings: dict):
             ret, frame = cap.read()
             if not ret:
                 break
-            
+
+            frame = apply_video_rotation(frame, rotation_degrees)
+
             frame_count += 1
             timestamp = frame_count / fps
             
@@ -620,18 +715,25 @@ def main():
         )
         
         if uploaded_file:
-            st.video(uploaded_file)
-            
+            video_display = st.empty()
+            video_display.video(uploaded_file)
+
             col1, col2 = st.columns([1, 3])
             with col1:
-                if st.button("🔬 Analyze Video", type="primary", disabled=st.session_state.processing):
-                    # Reset file pointer
-                    uploaded_file.seek(0)
-                    process_video(uploaded_file, settings)
-            
+                analyze_clicked = st.button(
+                    "🔬 Analyze Video",
+                    type="primary",
+                    disabled=st.session_state.processing,
+                )
+
             with col2:
                 if st.session_state.processing:
                     st.info("Processing video... This may take a moment.")
+
+            if analyze_clicked:
+                # Reset file pointer
+                uploaded_file.seek(0)
+                process_video(uploaded_file, settings, video_display)
         else:
             # Placeholder content
             st.info("👆 Upload a video to get started")

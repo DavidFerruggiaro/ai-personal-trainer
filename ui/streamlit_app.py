@@ -601,7 +601,7 @@ def main():
     
     # Header
     st.title("🏋️ AI Personal Trainer - Squat MVP")
-    st.markdown("Upload a video of your squats for real-time form analysis")
+    st.markdown("Upload a squat video and get per-rep form feedback.")
     
     # Sidebar settings
     settings = render_sidebar()

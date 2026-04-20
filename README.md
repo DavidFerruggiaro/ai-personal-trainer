@@ -1,21 +1,21 @@
 # AI Personal Trainer - Squat MVP
 
-A real-time squat analysis application using computer vision and pose detection.
+Upload a squat video and get per-rep form feedback powered by pose detection and a biomechanical rep-counter. Built as the first exercise in a larger AI personal-trainer roadmap; see `PLAN.md` in the parent workspace for staging toward a native real-time prototype.
 
 ## Features
 
-- **Rep Counting**: Accurate rep detection with state machine tracking
-- **Form Feedback**: Real-time analysis of:
-  - Squat depth (hip below knee)
+- **Rep Counting**: State-machine rep detection with pose-validity, motion, and cooldown gates to suppress false positives.
+- **Per-Rep Form Feedback**: After each completed rep, one concise cue covering:
+  - Squat depth (knee-angle-based)
   - Torso lean angle
   - Knee valgus (cave-in detection)
-- **Visual Overlays**: 
-  - Pose skeleton visualization
-  - Knee angle display
+- **Visual Overlays**:
+  - State-colored pose skeleton (idle / countdown / active)
+  - Knee-angle readout
   - Depth progress bar
-  - Rep counter
-  - Form feedback text
-- **Session Summary**: Post-workout statistics and recommendations
+  - Prominent rep counter with pulse animation
+  - TTL-based per-rep feedback (no live cue spam)
+- **Session Summary**: Post-workout rep table, good-form percentage, rep-quality distribution, and coaching recommendations.
 
 ## Installation
 
@@ -57,7 +57,9 @@ Or use the entry point:
 python main.py
 ```
 
-The app will open in your browser at `http://localhost:8501`.
+The app will open in your browser at `http://localhost:8501`. Upload an `.mp4`, `.mov`, `.avi`, or `.mkv` file, then click **Analyze Video**. The app processes the video frame-by-frame, counts reps, checks form, and shows a session summary when the clip ends.
+
+> This is a batch analyzer today — it processes an uploaded clip, not a live camera feed. Live on-device analysis is the next phase; see the roadmap section below.
 
 ### Recording Tips
 
@@ -139,17 +141,20 @@ Adjustable settings in the sidebar:
 
 ## Development
 
-### Running Tests
-
-```bash
-pytest tests/
-```
-
 ### Code Structure
 
-- `core/` - Business logic, no external dependencies except numpy/scipy
-- `ui/` - Streamlit-specific code
-- `utils/` - Shared utilities
+- `core/` - Platform-agnostic analysis logic (pose pipeline, smoothing, rep counter, form feedback).
+- `ui/` - Streamlit-specific code (upload flow, overlay renderer, camera guidance).
+- `utils/` - Shared utilities (geometry helpers, session logger).
+
+### Testing
+
+No automated test suite yet. Manual verification is done by running the three sample videos (`front_view_60fps.mp4`, `side_view_60fps.mp4`, `squats_v2.mp4`) through the app and spot-checking rep counts and form feedback against visual inspection.
+
+### Roadmap
+
+- Phase 2: On-device real-time prototype (iOS + Apple Vision, or web + MediaPipe JS) — live camera preview with the current rep-counter logic ported over.
+- Phase 3: Additional exercises (bench, deadlift, pushup) once the real-time pipeline is stable.
 
 ## License
 

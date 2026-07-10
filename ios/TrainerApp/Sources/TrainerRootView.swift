@@ -76,11 +76,17 @@ struct TrainerRootView: View {
 private struct BackSquatQuickSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var session: QuickSession
+    @State private var loadText: String
+    @State private var loadUnit: LoadUnit
+    @State private var loadEntryError: String?
     private let exercise: ExerciseDefinition
 
     init(exercise: ExerciseDefinition) {
         self.exercise = exercise
         _session = State(initialValue: QuickSession(exerciseID: exercise.id))
+        _loadText = State(initialValue: "")
+        _loadUnit = State(initialValue: .defaultUnit)
+        _loadEntryError = State(initialValue: nil)
     }
 
     var body: some View {
@@ -122,12 +128,50 @@ private struct BackSquatQuickSessionView: View {
                 .background(.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Before your first set")
+                    Text(session.currentSet.ordinal == 1 ? "Before your first set" : "Before your next set")
                         .font(.headline)
 
                     Text("Set the phone far enough back to keep your full body in frame. You will confirm your weight and camera setup before recording starts.")
                         .foregroundStyle(.secondary)
                 }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Load for Set \(session.currentSet.ordinal)")
+                        .font(.headline)
+
+                    HStack(spacing: 12) {
+                        TextField("Weight", text: $loadText)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("Load value")
+
+                        Picker("Unit", selection: $loadUnit) {
+                            ForEach(LoadUnit.allCases) { unit in
+                                Text(unit.rawValue).tag(unit)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 130)
+                    }
+
+                    if let previousSet = session.completedSets.last {
+                        Text("Carried forward from Set \(previousSet.ordinal). Edit it if the load changes.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Pounds are the initial default. Enter the actual load, including zero if that is intentional.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let loadEntryError {
+                        Text(loadEntryError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+                .padding(16)
+                .background(.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
 
                 VStack(alignment: .leading, spacing: 10) {
                     Button("Complete Set") {
@@ -136,6 +180,7 @@ private struct BackSquatQuickSessionView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .frame(maxWidth: .infinity)
+                    .disabled(loadText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                     Text("This camera-independent step advances only the in-memory session. It does not analyze or save the set yet.")
                         .font(.footnote)
@@ -154,11 +199,35 @@ private struct BackSquatQuickSessionView: View {
     }
 
     private func completeCurrentSet() {
-        do {
-            try session.completeCurrentSet()
-        } catch {
-            assertionFailure("An active quick session should accept a completed set: \(error)")
+        let trimmedLoad = loadText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = Double(trimmedLoad) else {
+            loadEntryError = "Enter a valid numeric load."
+            return
         }
+
+        do {
+            let load = try TrainingLoad(value: value, unit: loadUnit)
+            try session.setCurrentSetLoad(load)
+            try session.completeCurrentSet()
+            syncLoadEntryFromCurrentSet()
+            loadEntryError = nil
+        } catch TrainingLoadError.invalidValue {
+            loadEntryError = "Load must be zero or greater."
+        } catch {
+            assertionFailure("A loaded, active quick session should accept a completed set: \(error)")
+        }
+    }
+
+    private func syncLoadEntryFromCurrentSet() {
+        guard let load = session.currentSet.load else {
+            loadText = ""
+            loadUnit = .defaultUnit
+            return
+        }
+
+        let valueText = String(load.value)
+        loadText = valueText.hasSuffix(".0") ? String(valueText.dropLast(2)) : valueText
+        loadUnit = load.unit
     }
 
     private func endSession() {

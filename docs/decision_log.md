@@ -72,3 +72,7 @@ This log records product and technical decisions that future agents should not r
 - Completed M2.3 by encoding the predefined v1 exercise catalog in `TrainerCore`: `back_squat` is supported, while goblet, bodyweight, dumbbell, and kettlebell squat IDs remain planned. The model can also represent disabled entries.
 - The quick-start UI now renders only `ExerciseCatalog.v1.supportedExercises` and attaches the selected stable exercise ID to the session. Planned/disabled movements remain absent from the lifting flow.
 - Four catalog/selection tests bring the `TrainerCore` suite to seven passing tests. `TrainerApp` and the isolated `PoseBakeoff` target both retain passing Simulator builds.
+- Completed M2.4 with explicit `TrainingLoad` value/unit state. Pounds are the initial default; missing is `nil`; explicit zero is valid; negative and non-finite values are rejected.
+- Current set drafts carry optional load, completed summaries require it, and completion copies the exact value/unit into the next draft. Later edits do not mutate completed data, and kilograms are never silently converted or reinterpreted.
+- Added pre-set load entry and unit selection to `TrainerApp`. The camera-independent completion seam commits the typed load; M2.5 must move that commit boundary before setup/start-set so capture cannot begin without a loaded draft.
+- Five new load tests bring `TrainerCore` to 12 passing tests, and `TrainerApp` retains a passing Simulator build. Persistence/history remains intentionally out of scope.

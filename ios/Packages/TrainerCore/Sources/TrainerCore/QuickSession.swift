@@ -4,12 +4,19 @@ public struct SetDraft: Equatable, Identifiable, Sendable {
     public let id: UUID
     public let ordinal: Int
     public let exerciseID: ExerciseID
+    public let load: TrainingLoad?
 
-    public init(id: UUID, ordinal: Int, exerciseID: ExerciseID) {
+    public init(
+        id: UUID,
+        ordinal: Int,
+        exerciseID: ExerciseID,
+        load: TrainingLoad? = nil
+    ) {
         precondition(ordinal > 0, "Set ordinals must be positive")
         self.id = id
         self.ordinal = ordinal
         self.exerciseID = exerciseID
+        self.load = load
     }
 }
 
@@ -17,18 +24,21 @@ public struct CompletedSetSummary: Equatable, Identifiable, Sendable {
     public let id: UUID
     public let ordinal: Int
     public let exerciseID: ExerciseID
+    public let load: TrainingLoad
     public let completedAt: Date
 
-    public init(draft: SetDraft, completedAt: Date) {
+    public init(draft: SetDraft, load: TrainingLoad, completedAt: Date) {
         id = draft.id
         ordinal = draft.ordinal
         exerciseID = draft.exerciseID
+        self.load = load
         self.completedAt = completedAt
     }
 }
 
 public enum QuickSessionError: Error, Equatable, Sendable {
     case sessionEnded
+    case missingLoad
 }
 
 public struct QuickSession: Equatable, Identifiable, Sendable {
@@ -66,14 +76,36 @@ public struct QuickSession: Equatable, Identifiable, Sendable {
             throw QuickSessionError.sessionEnded
         }
 
-        let completedSet = CompletedSetSummary(draft: currentSet, completedAt: completedAt)
+        guard let load = currentSet.load else {
+            throw QuickSessionError.missingLoad
+        }
+
+        let completedSet = CompletedSetSummary(
+            draft: currentSet,
+            load: load,
+            completedAt: completedAt
+        )
         completedSets.append(completedSet)
         currentSet = SetDraft(
             id: nextSetID,
             ordinal: currentSet.ordinal + 1,
-            exerciseID: exerciseID
+            exerciseID: exerciseID,
+            load: load
         )
         return completedSet
+    }
+
+    public mutating func setCurrentSetLoad(_ load: TrainingLoad) throws {
+        guard isActive else {
+            throw QuickSessionError.sessionEnded
+        }
+
+        currentSet = SetDraft(
+            id: currentSet.id,
+            ordinal: currentSet.ordinal,
+            exerciseID: currentSet.exerciseID,
+            load: load
+        )
     }
 
     public mutating func end(at endedAt: Date = Date()) throws {

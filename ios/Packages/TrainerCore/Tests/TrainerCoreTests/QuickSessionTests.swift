@@ -22,20 +22,28 @@ struct QuickSessionTests {
 
     @Test func completingSetsPreservesOrderAndAdvancesCurrentSet() throws {
         var session = makeSession()
+        let load = try TrainingLoad(value: 185, unit: .pounds)
         let firstCompletedAt = Date(timeIntervalSince1970: 120)
         let secondCompletedAt = Date(timeIntervalSince1970: 150)
 
+        try session.setCurrentSetLoad(load)
         let first = try session.completeCurrentSet(at: firstCompletedAt, nextSetID: secondSetID)
         let second = try session.completeCurrentSet(at: secondCompletedAt, nextSetID: thirdSetID)
 
         #expect(first == CompletedSetSummary(
-            draft: SetDraft(id: firstSetID, ordinal: 1, exerciseID: .backSquat),
+            draft: SetDraft(id: firstSetID, ordinal: 1, exerciseID: .backSquat, load: load),
+            load: load,
             completedAt: firstCompletedAt
         ))
         #expect(second.ordinal == 2)
         #expect(second.exerciseID == .backSquat)
         #expect(session.completedSets == [first, second])
-        #expect(session.currentSet == SetDraft(id: thirdSetID, ordinal: 3, exerciseID: .backSquat))
+        #expect(session.currentSet == SetDraft(
+            id: thirdSetID,
+            ordinal: 3,
+            exerciseID: .backSquat,
+            load: load
+        ))
     }
 
     @Test func endingRecordsLifecycleAndRejectsLaterMutation() throws {
@@ -48,6 +56,9 @@ struct QuickSessionTests {
         #expect(session.endedAt == endedAt)
         #expect(throws: QuickSessionError.sessionEnded) {
             try session.completeCurrentSet(nextSetID: secondSetID)
+        }
+        #expect(throws: QuickSessionError.sessionEnded) {
+            try session.setCurrentSetLoad(TrainingLoad(value: 185, unit: .pounds))
         }
         #expect(throws: QuickSessionError.sessionEnded) {
             try session.end(at: endedAt.addingTimeInterval(10))

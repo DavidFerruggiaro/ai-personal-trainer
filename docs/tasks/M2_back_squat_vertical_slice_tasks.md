@@ -244,7 +244,7 @@ Result:
 
 ### M2.4 Add Weight Entry With Defaults
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -278,6 +278,18 @@ Files likely touched:
 Documentation updates:
 
 - Record initial unit decision if changed.
+
+Result:
+
+- Added `TrainingLoad` as an explicit numeric value plus `LoadUnit` (`lb` or `kg`) in `TrainerCore`; pounds are the initial UI/domain default.
+- Missing load remains `nil`. Zero is a valid explicit value, while negative, NaN, and infinite values are rejected.
+- `SetDraft` now carries optional load, and a set cannot move into `CompletedSetSummary` until a valid load is attached. Completed summaries carry a required load.
+- Completing a set copies the exact value and unit into the next set draft. Editing the next draft replaces only that draft and does not mutate the prior completed summary.
+- Added a pre-set load field and `lb`/`kg` segmented control to the quick-session screen. After a set advances, the carried value/unit remain visible and editable for the next set.
+- The current camera-independent seam validates and commits the UI entry immediately before `Complete Set`. M2.5 must commit/validate the load before entering setup/start-set state so capture can never begin with an unloaded draft.
+- Added five focused load tests and extended lifecycle coverage. The full `TrainerCore` suite passes with 12 tests, including missing/invalid load, explicit zero, pounds default, exact pound carry-forward with immutable prior data, and kilogram carry-forward without conversion.
+- `TrainerApp` passed the generic iOS Simulator build on 2026-07-10. Mechanical multi-set weight entry was not tapped because the local computer-use runtime remains unavailable; the carry/edit behavior is verified at the domain layer, not claimed as a manual UI run.
+- This remains transient session state. It is not SwiftData/history and is not the later canonical persisted `SetResult`.
 
 ### M2.5 Implement Setup Gate UI State
 

@@ -8,6 +8,12 @@ __pycache__/
 .idea/
 .vscode/
 
+# Xcode / CocoaPods local state
+ios/Pods/
+ios/Packages/**/.build/
+ios/**/*.xcuserstate
+ios/**/xcuserdata/
+
 # Streamlit / upload cache
 .streamlit/secrets.toml
 

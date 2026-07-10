@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "clip_id": "gym_w_barbell",
+  "source_video": {
+    "filename": "gym_w_barbell.mov",
+    "local_path": "gym_w_barbell.mov"
+  },
+  "exercise": "back_squat",
+  "camera_angle": "side",
+  "load_lbs": null,
+  "conditions": [
+    "commercial_gym",
+    "side_view",
+    "barbell_partially_occludes_torso"
+  ],
+  "confidence_should_be_low": false,
+  "human_verified": {
+    "verified": true,
+    "verified_at": "2026-05-25",
+    "notes": "User scrubbed the video against the JSON and confirmed seven clean completed reps. Start, bottom, and end timestamps were very close by rough comparison."
+  },
+  "labeling_notes": [
+    "Labels cover the actual working squat set, not the earlier setup/unrack sequence.",
+    "Times are first-pass human labels from video frame inspection at 0.5s resolution.",
+    "Use these labels to validate the scoring loop; do not treat this as final form accuracy."
+  ],
+  "reps": [
+    {
+      "index": 1,
+      "start_s": 35.0,
+      "bottom_s": 38.0,
+      "end_s": 39.0,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    },
+    {
+      "index": 2,
+      "start_s": 40.0,
+      "bottom_s": 42.0,
+      "end_s": 43.0,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    },
+    {
+      "index": 3,
+      "start_s": 44.0,
+      "bottom_s": 45.5,
+      "end_s": 46.5,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    },
+    {
+      "index": 4,
+      "start_s": 47.5,
+      "bottom_s": 49.0,
+      "end_s": 50.0,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    },
+    {
+      "index": 5,
+      "start_s": 51.5,
+      "bottom_s": 53.0,
+      "end_s": 54.5,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    },
+    {
+      "index": 6,
+      "start_s": 56.0,
+      "bottom_s": 57.5,
+      "end_s": 58.5,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    },
+    {
+      "index": 7,
+      "start_s": 62.0,
+      "bottom_s": 63.5,
+      "end_s": 65.5,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    }
+  ]
+}

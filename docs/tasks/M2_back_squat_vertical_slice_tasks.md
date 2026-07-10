@@ -1,6 +1,6 @@
 # M2 Back Squat Vertical Slice Tasks
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Milestone Goal
 
@@ -144,7 +144,7 @@ Result:
 
 ### M2.2 Implement Quick-Start Session State
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -181,6 +181,17 @@ Files likely touched:
 Documentation updates:
 
 - Record session state assumptions if they differ from handoff.
+
+Result:
+
+- Added a Foundation-only `TrainerCore` package for app-domain session state. It is linked only to `TrainerApp`; pose and squat-analysis packages remain independent.
+- Added stable exercise IDs, `SetDraft`, `CompletedSetSummary`, and an in-memory `QuickSession` lifecycle with explicit start, ordered set completion, next-set creation, and end behavior.
+- Session mutations after end are rejected. The model intentionally contains no persistence, camera, pose, rep analysis, history, or production `SetResult` claims.
+- `BackSquatQuickSessionView` now owns a local session, shows the current set and completed-set count, can advance multiple sets in memory, and marks the session ended before dismissing.
+- The temporary `Complete Set` control explicitly says that it neither analyzes nor saves the set; later capture/review tickets will replace this camera-independent seam.
+- `TrainerCore` has three deterministic lifecycle tests covering start state, two ordered set completions, next-set advancement, end state, and rejection of post-end mutation.
+- On 2026-07-10, `TrainerCore`, `PoseCore`, and `SquatAnalysis` tests passed; `TrainerApp` and `PoseBakeoff` Simulator builds passed; `TrainerApp` installed, launched, and rendered its root screen on an iPhone 16 / iOS 18.6 simulator.
+- The local computer-use runtime still failed to start, so the destination buttons were not mechanically tapped in Simulator. Model transitions are unit-tested and the destination compiles, but this is not recorded as a manual interaction run.
 
 ### M2.3 Add Supported Exercise Selection
 

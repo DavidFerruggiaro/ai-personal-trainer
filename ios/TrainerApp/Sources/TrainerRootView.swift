@@ -1,4 +1,5 @@
 import SwiftUI
+import TrainerCore
 
 struct TrainerRootView: View {
     var body: some View {
@@ -42,7 +43,7 @@ struct TrainerRootView: View {
                     .background(.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
 
                     NavigationLink {
-                        BackSquatQuickSessionView()
+                        BackSquatQuickSessionView(exerciseID: .backSquat)
                     } label: {
                         HStack {
                             Text("Start Quick Session")
@@ -70,6 +71,11 @@ struct TrainerRootView: View {
 
 private struct BackSquatQuickSessionView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var session: QuickSession
+
+    init(exerciseID: ExerciseID) {
+        _session = State(initialValue: QuickSession(exerciseID: exerciseID))
+    }
 
     var body: some View {
         ScrollView {
@@ -82,10 +88,22 @@ private struct BackSquatQuickSessionView: View {
                     Text("Back Squat")
                         .font(.largeTitle.bold())
 
-                    Text("Set 1")
+                    Text("Set \(session.currentSet.ordinal)")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
+
+                HStack {
+                    Label("Active session", systemImage: "timer")
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    Text("\(session.completedSets.count) completed")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .background(.green.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
 
                 VStack(alignment: .leading, spacing: 14) {
                     Label("Barbell back squat", systemImage: "figure.strengthtraining.traditional")
@@ -105,8 +123,21 @@ private struct BackSquatQuickSessionView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                VStack(alignment: .leading, spacing: 10) {
+                    Button("Complete Set") {
+                        completeCurrentSet()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+
+                    Text("This camera-independent step advances only the in-memory session. It does not analyze or save the set yet.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Button("End Quick Session", role: .destructive) {
-                    dismiss()
+                    endSession()
                 }
                 .buttonStyle(.bordered)
             }
@@ -114,5 +145,22 @@ private struct BackSquatQuickSessionView: View {
         }
         .navigationTitle("Back Squat")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func completeCurrentSet() {
+        do {
+            try session.completeCurrentSet()
+        } catch {
+            assertionFailure("An active quick session should accept a completed set: \(error)")
+        }
+    }
+
+    private func endSession() {
+        do {
+            try session.end()
+            dismiss()
+        } catch {
+            assertionFailure("An active quick session should end once: \(error)")
+        }
     }
 }

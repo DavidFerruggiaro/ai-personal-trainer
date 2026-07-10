@@ -8,6 +8,7 @@ The current Python/Streamlit app remains the reference prototype. The native reb
 - `TrainerApp/`: user-facing Back Squat app, currently at the quick-start shell.
 - `Packages/PoseCore/`: shared pose schema, estimator protocol, and export types.
 - `Packages/SquatAnalysis/`: shared squat rep/form analysis logic, initially a placeholder.
+- `Packages/TrainerCore/`: app-domain quick-session state, with catalog/load models added only as their M2 tickets begin.
 
 ## Current Status
 
@@ -31,6 +32,7 @@ The shared package checks pass:
 ```bash
 swift test --package-path Packages/PoseCore
 swift test --package-path Packages/SquatAnalysis
+swift test --package-path Packages/TrainerCore
 ```
 
 The project currently has these schemes:
@@ -39,6 +41,7 @@ The project currently has these schemes:
 - `TrainerApp`
 - `PoseCore`
 - `SquatAnalysis`
+- `TrainerCore`
 
 Simulator build checks:
 
@@ -76,7 +79,7 @@ Current milestone boundary:
 
 1. MediaPipe is selected for the Milestone 2 implementation direction; see `../docs/bakeoff_results/2026-07-09_engine_selection.md`.
 2. M1.11 remains blocked on the documented hands-on physical-iPhone run. Complete that protocol before production live capture work.
-3. The camera-independent M2.1 quick-start shell is complete. The next safe ticket is the in-memory M2.2 session state.
+3. The camera-independent M2.1 shell and M2.2 in-memory session lifecycle are complete. The next safe ticket is M2.3 supported-exercise catalog wiring.
 4. Keep using `SquatTrainer.xcworkspace` for `PoseBakeoff`. `TrainerApp` still builds from the project until its eventual MediaPipe production adapter is deliberately wired.
 5. Do not use the rough bakeoff hip-dip detector as the production rep counter; `SquatAnalyzer` still needs a tested counted-vs-clean redesign.
 
@@ -87,4 +90,5 @@ From this directory:
 ```bash
 swift test --package-path Packages/PoseCore
 swift test --package-path Packages/SquatAnalysis
+swift test --package-path Packages/TrainerCore
 ```

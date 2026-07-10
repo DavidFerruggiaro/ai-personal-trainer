@@ -1,6 +1,6 @@
 # Native Rebuild Agent Handoff
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Purpose
 
@@ -41,6 +41,7 @@ Native rebuild additions:
 - `ios/TrainerApp/`: user-facing app with the first narrow Back Squat quick-start shell.
 - `ios/Packages/PoseCore/`: local Swift package for normalized pose types, estimator protocol, JSON export shape.
 - `ios/Packages/SquatAnalysis/`: local Swift package for squat analysis, currently placeholder.
+- `ios/Packages/TrainerCore/`: Foundation-only app-domain package for quick-session, exercise-catalog, and load state; M2.2 lifecycle is implemented and tested.
 - `ios/SquatTrainer.xcodeproj`: Xcode project with `PoseBakeoff`, `TrainerApp`, `PoseCore`, and `SquatAnalysis` schemes.
 - `ios/SquatTrainer.xcworkspace`: CocoaPods workspace; use this for `PoseBakeoff` now that MediaPipe is integrated.
 - `ios/PoseBakeoff/Sources/AppleVisionPoseEstimator.swift`: first Apple Vision estimator implementation.
@@ -187,7 +188,7 @@ Current M1 state:
 - M1.11 is blocked pending a hands-on physical-iPhone run. A connected iPhone destination was visible to Xcode on 2026-07-09, but the unattended session could not perform camera placement, squat motion, visual overlay inspection, heat, or battery checks.
 - The device protocol and measurement limitations are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 - Camera-independent Milestone 2 work may proceed. The physical-device artifact remains a go/no-go gate before camera-backed setup checks, production live capture, or real-time tracking; it does not block setup-gate UI/state modeling.
-- M2.0 and M2.1 are complete. `TrainerApp` now launches to a single Back Squat quick-start entry and a camera-independent session shell; it does not yet own session state, weight entry, camera setup, persistence, or analysis.
+- M2.0 through M2.2 are complete. `TrainerApp` now launches to a single Back Squat quick-start entry backed by an in-memory `QuickSession`; it tracks the current set, ordered completed sets, and explicit end state. It does not yet own a catalog-driven entry, weight input, camera setup, persistence, or analysis.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -648,8 +649,8 @@ Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
 2. M1.11 is blocked on the hands-on physical-device protocol and must pass before production live capture work.
-3. M2.1 is complete: the `TrainerApp` placeholder is now a narrow Back Squat quick-start shell.
-4. The next safe build ticket is M2.2: add the minimal in-memory quick-session state model without camera or persistence work.
+3. M2.1 and M2.2 are complete: the narrow Back Squat quick-start shell now owns a tested, in-memory session lifecycle without camera or persistence work.
+4. The next safe build ticket is M2.3: derive the existing Back Squat entry from the predefined supported-exercise catalog while hiding planned/disabled exercises.
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
 6. The later analyzer port must intentionally separate counted reps from clean reps; the Python state machine is reference logic, not a literal Swift specification.
 

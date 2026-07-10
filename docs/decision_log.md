@@ -60,3 +60,12 @@ This log records product and technical decisions that future agents should not r
 - Confirmed that `SquatAnalyzer` is still a production placeholder and the Python counter should not be copied literally: its depth/lockout count gates conflate whether a rep happened with whether it was clean.
 - Completed M2.1 by replacing the `TrainerApp` placeholder with a single Back Squat quick-start entry and camera-independent session shell. The app was built, installed, launched, and visually inspected on an iPhone 16 / iOS 18.6 simulator.
 - Hardened the M1.11 harness before the physical run: configured the rear camera for 30 FPS, processed every delivered frame, added capture-output drop accounting and median latency, disabled reset during capture, and documented explicit MediaPipe viability criteria with separate standing/squat artifacts.
+
+## 2026-07-10
+
+- Completed M2.2 with a new Foundation-only `TrainerCore` package, linked only to `TrainerApp`. Session/catalog/load app state does not belong in `SquatAnalysis`, whose responsibility remains rep counting and form analysis.
+- Added a tested in-memory `QuickSession` lifecycle with a stable `back_squat` exercise ID, current set, ordered completed-set summaries, next-set advancement, explicit end time, and rejection of mutation after end.
+- Kept M2.2 intentionally transient: no SwiftData, history, camera, pose frames, rep counts, feedback, or canonical `SetResult` persistence were added.
+- `TrainerApp` now creates a session on quick-start navigation, displays the live set ordinal and completed-set count, advances sets through an explicitly non-analyzing/non-saving seam, and marks the session ended before dismissal.
+- `TrainerCore` tests pass (3 tests), both existing package suites pass, and both `TrainerApp` and `PoseBakeoff` Simulator builds pass. `TrainerCore` is absent from the `PoseBakeoff` target dependency graph.
+- The iPhone 16 / iOS 18.6 Simulator installed, launched, and rendered `TrainerApp`; mechanical tap-through remained unavailable because the local computer-use runtime failed to start.

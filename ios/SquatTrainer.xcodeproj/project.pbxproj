@@ -20,6 +20,7 @@
 		A1000000000000000000000A /* MediaPipePoseEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* MediaPipePoseEstimator.swift */; };
 		A1000000000000000000000B /* pose_landmarker_full.task in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* pose_landmarker_full.task */; };
 		A1000000000000000000000C /* LiveCameraViabilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* LiveCameraViabilityView.swift */; };
+		A1000000000000000000000D /* TrainerCore in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000006 /* TrainerCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +56,7 @@
 			files = (
 				A10000000000000000000007 /* PoseCore in Frameworks */,
 				A10000000000000000000008 /* SquatAnalysis in Frameworks */,
+				A1000000000000000000000D /* TrainerCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,6 +188,7 @@
 			packageProductDependencies = (
 				A70000000000000000000001 /* PoseCore */,
 				A70000000000000000000002 /* SquatAnalysis */,
+				A70000000000000000000006 /* TrainerCore */,
 			);
 			productName = TrainerApp;
 			productReference = A20000000000000000000006 /* TrainerApp.app */;
@@ -222,6 +225,7 @@
 			packageReferences = (
 				A70000000000000000000003 /* XCLocalSwiftPackageReference "PoseCore" */,
 				A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */,
+				A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A40000000000000000000004 /* Products */;
@@ -552,6 +556,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/SquatAnalysis;
 		};
+		A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TrainerCore;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -564,6 +572,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */;
 			productName = SquatAnalysis;
+		};
+		A70000000000000000000006 /* TrainerCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */;
+			productName = TrainerCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

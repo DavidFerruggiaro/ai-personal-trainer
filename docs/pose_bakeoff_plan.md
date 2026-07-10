@@ -1,6 +1,6 @@
 # Pose Bakeoff Plan
 
-Last updated: 2026-05-23
+Last updated: 2026-07-09
 
 ## Purpose
 
@@ -25,6 +25,16 @@ Apple Vision wins v1 only if it can reliably support side-view squat rep trackin
 - Practical support for rep boundaries and clean-rep gates.
 
 MediaPipe wins if Vision's lower-body landmarks are too jittery, drop too often, or are less useful for squat analysis, even if Vision is easier to integrate.
+
+## Decision
+
+MediaPipe Pose Landmarker is selected as the Milestone 2 implementation direction.
+
+The full rationale is recorded in `docs/bakeoff_results/2026-07-09_engine_selection.md`. MediaPipe has the strongest current lower-body continuity and the only labeled score from a native MediaPipe pose export: the Python M1 scorer reported 7 expected, 7 predicted, 0 missed, and 0 phantom on one clean side-view barbell clip. Apple Vision remains in `PoseBakeoff` as a baseline comparator.
+
+This is a conditional implementation decision, not final accuracy certification. The evidence set is still small, clean-rep gates have not been validated, and M1.11 physical-iPhone live viability remains blocked on a hands-on run. Camera-independent Milestone 2 work may proceed; production live capture may not claim viability until that device gate passes.
+
+For M1.11, the originally stated 24 FPS and 75ms targets now serve as first-pass live viability thresholds for the selected MediaPipe engine as well, not only as the condition under which Apple Vision would have won on convenience. The complete MediaPipe pass/fail criteria and fallback path are in `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 
 ## Dataset Strategy
 
@@ -258,11 +268,9 @@ Initial shared packages:
 - `PoseCore`: normalized pose types, `PoseEstimator` protocol, JSON export shape.
 - `SquatAnalysis`: rep counting and clean-rep logic, initially placeholder.
 
-## Open Questions
+## Remaining Questions
 
-- Exact Apple Vision API/version to target.
-- Exact MediaPipe iOS integration approach.
-- Whether the JSON export should be NDJSON/chunked for long clips.
-- How to visualize confidence/dropouts in the overlay.
-- When to add live-camera viability testing inside milestone 1.
-- How to structure local video and JSON export storage on-device.
+- Whether long debug exports should move from JSON to NDJSON/chunked storage.
+- How to quantify landmark jitter beyond completeness and longest-miss metrics.
+- Whether out-of-frame MediaPipe coordinates should remain unbounded, be clamped, or be separately flagged in the app-owned schema.
+- How production video and debug artifact files should be organized on-device before persistence work begins.

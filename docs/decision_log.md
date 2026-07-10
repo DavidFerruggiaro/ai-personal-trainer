@@ -38,7 +38,7 @@ This log records product and technical decisions that future agents should not r
 - Changed Photos import in `PoseBakeoff` to file-transfer loading instead of loading entire videos into memory. JSON exports now write to app Documents under `PoseBakeoffExports/`.
 - Working engine direction: proceed with MediaPipe for the next build branch, while keeping Apple Vision as a baseline comparator until formal labeled scoring is complete.
 - Added the first manual side-view back-squat label file, `docs/bakeoff_labels/gym_w_barbell.labels.json`, plus `SquatAnalysis` label/scoring types and `scripts/score_pose_bakeoff.py`.
-- First MediaPipe quick scoring result for `gym_w_barbell.mov`: 7 expected reps, 7 predicted reps, 7 matched reps, 0 missed reps, 0 phantom reps, and 0.071s bottom-position mean absolute error at 0.5s tolerance. This validates the M1 label/scoring loop only; it does not establish final form accuracy or the 150 ms timing target because the export is 2 FPS.
+- First MediaPipe quick scoring result for `gym_w_barbell.mov`: 7 expected reps, 7 predicted reps, 7 matched reps, 0 missed reps, 0 phantom reps, and a computed 0.071s bottom-position mean absolute error at 0.5s tolerance. This validates the M1 label/scoring loop only; both the 2 FPS export and manual labels use 0.5s resolution, so the computed mean is coarse-timestamp arithmetic rather than measured 71ms accuracy.
 - User human-verified `docs/bakeoff_labels/gym_w_barbell.labels.json` against the source video on 2026-05-25: seven clean completed reps, with start/bottom/end timestamps very close by rough scrubbing comparison.
 
 ## 2026-05-25
@@ -47,3 +47,16 @@ This log records product and technical decisions that future agents should not r
 - Live viability harness now displays elapsed time, processed frames, frames with pose, dropped/skipped frames, failed frames, effective FPS, average/latest latency, and average/latest frame confidence. It can export live metrics JSON from the app.
 - `PoseBakeoff` now includes a camera usage description in generated Info.plist settings.
 - Simulator and generic iOS builds pass for the live-camera implementation. Physical iPhone verification is still required before M1.11 can be marked done.
+
+## 2026-07-09
+
+- Reconstructed the native rebuild from repo docs and verified that the Python/Streamlit implementation remains untouched reference code.
+- Re-ran the required baseline: `PoseCore` tests pass, `SquatAnalysis` tests pass, `PoseBakeoff` workspace Simulator build passes, `TrainerApp` project Simulator build passes, and the barbell scoring command still reports 7 expected / 7 predicted / 0 missed / 0 phantom.
+- Checkpointed the previously uncommitted native rebuild and its supporting docs/scripts on branch `codex/native-rebuild-checkpoint` at commit `2472bd2`. Unrelated untracked `.agents/` and `skills-lock.json` were not included.
+- Selected MediaPipe Pose Landmarker as the Milestone 2 implementation direction. Apple Vision remains a `PoseBakeoff` baseline comparator. See `docs/bakeoff_results/2026-07-09_engine_selection.md`.
+- Recorded that this engine choice is not production-accuracy certification: only one clean barbell clip is labeled, the quick export is 2 FPS, clean-rep gates are not discriminated by the current labels/scorer, and no physical-device runtime metrics exist yet.
+- Marked M1.11 blocked on a hands-on iPhone run. Xcode can see an iPhone destination, but camera placement, squat motion, overlay inspection, heat, and battery observations cannot be completed by the unattended session.
+- Allowed camera-independent Milestone 2 work to begin. Physical-device viability remains a go/no-go gate before camera-backed setup checks, production live capture, or real-time tracking; setup-gate UI/state modeling may proceed independently.
+- Confirmed that `SquatAnalyzer` is still a production placeholder and the Python counter should not be copied literally: its depth/lockout count gates conflate whether a rep happened with whether it was clean.
+- Completed M2.1 by replacing the `TrainerApp` placeholder with a single Back Squat quick-start entry and camera-independent session shell. The app was built, installed, launched, and visually inspected on an iPhone 16 / iOS 18.6 simulator.
+- Hardened the M1.11 harness before the physical run: configured the rear camera for 30 FPS, processed every delivered frame, added capture-output drop accounting and median latency, disabled reset during capture, and documented explicit MediaPipe viability criteria with separate standing/squat artifacts.

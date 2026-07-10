@@ -1,6 +1,6 @@
 # Native Rebuild Agent Handoff
 
-Last updated: 2026-05-25
+Last updated: 2026-07-09
 
 ## Purpose
 
@@ -38,7 +38,7 @@ Native rebuild additions:
 - `docs/decision_log.md`: durable decision record.
 - `ios/`: native rebuild skeleton.
 - `ios/PoseBakeoff/`: starter source for internal pose-engine test app.
-- `ios/TrainerApp/`: starter source for future user-facing app.
+- `ios/TrainerApp/`: user-facing app with the first narrow Back Squat quick-start shell.
 - `ios/Packages/PoseCore/`: local Swift package for normalized pose types, estimator protocol, JSON export shape.
 - `ios/Packages/SquatAnalysis/`: local Swift package for squat analysis, currently placeholder.
 - `ios/SquatTrainer.xcodeproj`: Xcode project with `PoseBakeoff`, `TrainerApp`, `PoseCore`, and `SquatAnalysis` schemes.
@@ -46,6 +46,11 @@ Native rebuild additions:
 - `ios/PoseBakeoff/Sources/AppleVisionPoseEstimator.swift`: first Apple Vision estimator implementation.
 - `ios/PoseBakeoff/Sources/MediaPipePoseEstimator.swift`: first native MediaPipe Pose Landmarker estimator implementation.
 - `ios/PoseBakeoff/Resources/pose_landmarker_full.task`: bundled MediaPipe full pose model.
+
+Checkpoint:
+
+- The previously uncommitted native rebuild, supporting docs, curated bakeoff artifacts, and scripts were checkpointed on branch `codex/native-rebuild-checkpoint` at commit `2472bd2` before further edits.
+- Unrelated untracked `.agents/` and `skills-lock.json` were intentionally left out of that checkpoint.
 
 ## Environment State
 
@@ -137,7 +142,7 @@ Sequence:
 1. Create real Xcode workspace/project. Done.
 2. Add `PoseBakeoff` app target. Done.
 3. Add local `PoseCore` package. Done.
-4. Implement Apple Vision pose estimator first. Build-verified; real-clip verification pending.
+4. Implement Apple Vision pose estimator first. Done; scripted real-clip smoke verification completed on three clips.
 5. Run on 2 recent squat videos and 2 goblet squat videos as unlabeled smoke tests.
 6. Add MediaPipe second behind the same `PoseEstimator` interface.
 7. Add labels and scoring only after overlay/export works.
@@ -171,15 +176,18 @@ Current M1 state:
 - `SquatAnalysis` now includes M1 label/scoring types, a rough hip-dip rep detector, and a bakeoff scorer.
 - `scripts/score_pose_bakeoff.py` compares manual labels to exported pose JSON.
 - First MediaPipe quick scoring artifact exists at `docs/bakeoff_results/2026-05-24_in_app_mediapipe/gym_w_barbell_mediapipe_quick_score.json`.
-- First scored result for `gym_w_barbell.mov`: 7 expected reps, 7 predicted reps, 7 matched reps, 0 missed reps, 0 phantom reps, 0.071s bottom mean absolute error at 0.5s quick-export tolerance.
+- First scored result for `gym_w_barbell.mov`: 7 expected reps, 7 predicted reps, 7 matched reps, 0 missed reps, and 0 phantom reps. The scorer reports 0.071s bottom mean absolute error, but both the 2 FPS export and manual labels use 0.5s resolution; this is coarse-timestamp arithmetic, not measured 71ms accuracy.
 - Photos import now uses file transfer instead of loading entire videos into memory.
 - `xcodebuild -workspace ios/SquatTrainer.xcworkspace -scheme PoseBakeoff -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` passes.
 - `swift test --package-path ios/Packages/PoseCore` passes.
 - `swift test --package-path ios/Packages/SquatAnalysis` passes.
-- Working engine direction is MediaPipe, while Apple Vision remains as a baseline comparator until comparable labeled scoring is complete.
-- M1.11 live camera implementation has started: `PoseBakeoff` now has a `Live Camera Viability` section that runs MediaPipe on rear-camera sample buffers and displays/exports FPS, latency, dropped/skipped frames, failed frames, and confidence metrics.
-- M1.11 physical-device run is still pending. The run protocol is documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
-- Next step is to run `PoseBakeoff` on a real iPhone, export live metrics JSON, record manual heat/battery/overlay notes, then update M1.11 results.
+- M1.12 is complete: MediaPipe Pose Landmarker is selected for Milestone 2 implementation. Apple Vision remains in `PoseBakeoff` as a baseline comparator. The evidence and caveats are documented at `docs/bakeoff_results/2026-07-09_engine_selection.md`.
+- The selection is an architecture direction, not a production-accuracy certification. Only one clean barbell clip is labeled; clean-rep gates and the 150ms timing target remain unproven.
+- M1.11 live camera implementation exists: `PoseBakeoff` configures the rear camera for 30 FPS, runs MediaPipe on every delivered sample buffer, and displays/exports processed FPS, capture-output drops, failures, average/median/latest latency, and confidence metrics. Reset is disabled during capture to preserve monotonic MediaPipe video timestamps.
+- M1.11 is blocked pending a hands-on physical-iPhone run. A connected iPhone destination was visible to Xcode on 2026-07-09, but the unattended session could not perform camera placement, squat motion, visual overlay inspection, heat, or battery checks.
+- The device protocol and measurement limitations are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
+- Camera-independent Milestone 2 work may proceed. The physical-device artifact remains a go/no-go gate before camera-backed setup checks, production live capture, or real-time tracking; it does not block setup-gate UI/state modeling.
+- M2.0 and M2.1 are complete. `TrainerApp` now launches to a single Back Squat quick-start entry and a camera-independent session shell; it does not yet own session state, weight entry, camera setup, persistence, or analysis.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -629,22 +637,21 @@ Use the Ryan-style repo-as-memory loop:
 
 1. Read `AGENTS.md`.
 2. Read this handoff.
-3. Read `docs/tasks/M1_pose_bakeoff_tasks.md`.
-4. Pick the next ticket only.
-5. Implement it.
+3. Read `docs/bakeoff_results/2026-07-09_engine_selection.md`.
+4. Read `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.
+5. Pick the next camera-independent M2 ticket only.
 6. Verify with the listed build/test commands.
 7. Update docs and `docs/decision_log.md`.
 8. Stop or ask before expanding scope.
 
-The next ticket is M1.11: Live Camera Viability Check.
+Current boundary:
 
-M1.10 is complete for the first loop:
-
-1. Human-editable rep labels exist for one side-view back-squat clip.
-2. `SquatAnalysis` can decode labels and score predicted events.
-3. `scripts/score_pose_bakeoff.py` can compare a pose export plus labels.
-4. The first score artifact reports counted rep mismatch, bottom timing error, missing/extra reps, and clean/failure agreement.
-5. Caveat: current scoring uses a rough normalized-hip detector and a 2 FPS quick export. It validates the workflow, not final form accuracy.
+1. M1.12 is complete with MediaPipe selected for M2 implementation.
+2. M1.11 is blocked on the hands-on physical-device protocol and must pass before production live capture work.
+3. M2.1 is complete: the `TrainerApp` placeholder is now a narrow Back Squat quick-start shell.
+4. The next safe build ticket is M2.2: add the minimal in-memory quick-session state model without camera or persistence work.
+5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
+6. The later analyzer port must intentionally separate counted reps from clean reps; the Python state machine is reference logic, not a literal Swift specification.
 
 ## Milestone 1 Ticket Breakdown
 

@@ -62,6 +62,7 @@ struct LiveCameraViabilityView: View {
                     Label("Reset Metrics", systemImage: "arrow.counterclockwise")
                 }
                 .buttonStyle(.bordered)
+                .disabled(model.isRunning)
             }
 
             HStack {
@@ -93,10 +94,11 @@ struct LiveCameraViabilityView: View {
             metricRow("Elapsed", model.metrics.elapsedSeconds.map { String(format: "%.1fs", $0) } ?? "-")
             metricRow("Processed", "\(model.metrics.processedFrames)")
             metricRow("With pose", "\(model.metrics.framesWithPose)")
-            metricRow("Dropped/skipped", "\(model.metrics.droppedFrames)")
+            metricRow("Capture dropped", "\(model.metrics.captureDroppedFrames)")
             metricRow("Failed", "\(model.metrics.failedFrames)")
             metricRow("Effective FPS", model.metrics.effectiveFPS.map { String(format: "%.1f", $0) } ?? "-")
             metricRow("Avg latency", model.metrics.averageLatencyMilliseconds.map { String(format: "%.1f ms", $0) } ?? "-")
+            metricRow("Median latency", model.metrics.medianLatencyMilliseconds.map { String(format: "%.1f ms", $0) } ?? "-")
             metricRow("Last latency", model.metrics.latestLatencyMilliseconds.map { String(format: "%.1f ms", $0) } ?? "-")
             metricRow("Avg confidence", model.metrics.averageFrameConfidence.map { String(format: "%.3f", $0) } ?? "-")
             metricRow("Last confidence", model.metrics.latestFrameConfidence.map { String(format: "%.3f", $0) } ?? "-")
@@ -118,9 +120,10 @@ private struct LiveCameraMetrics: Equatable {
     var elapsedSeconds: Double?
     var processedFrames = 0
     var framesWithPose = 0
-    var droppedFrames = 0
+    var captureDroppedFrames = 0
     var failedFrames = 0
     var totalLatencyMilliseconds = 0.0
+    var latencySamplesMilliseconds: [Double] = []
     var latestLatencyMilliseconds: Double?
     var totalFrameConfidence = 0.0
     var latestFrameConfidence: Double?
@@ -137,6 +140,19 @@ private struct LiveCameraMetrics: Equatable {
             return nil
         }
         return totalLatencyMilliseconds / Double(processedFrames)
+    }
+
+    var medianLatencyMilliseconds: Double? {
+        guard !latencySamplesMilliseconds.isEmpty else {
+            return nil
+        }
+
+        let sortedSamples = latencySamplesMilliseconds.sorted()
+        let middleIndex = sortedSamples.count / 2
+        if sortedSamples.count.isMultiple(of: 2) {
+            return (sortedSamples[middleIndex - 1] + sortedSamples[middleIndex]) / 2
+        }
+        return sortedSamples[middleIndex]
     }
 
     var averageFrameConfidence: Double? {
@@ -162,8 +178,6 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
     private var isConfigured = false
     private var landmarker: PoseLandmarker?
     private var startedAtUptime: TimeInterval?
-    private var lastSubmittedUptime: TimeInterval?
-    private let targetFrameIntervalSeconds = 1.0 / 15.0
 
     func start() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -200,12 +214,16 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
     }
 
     func resetMetrics() {
+        guard !isRunning else {
+            statusMessage = "Stop the camera before resetting metrics."
+            return
+        }
+
         DispatchQueue.main.async {
-            self.metrics = LiveCameraMetrics(startedAt: self.isRunning ? Date() : nil)
+            self.metrics = LiveCameraMetrics()
             self.latestPoseFrame = nil
             self.metricsExportURL = nil
-            self.startedAtUptime = self.isRunning ? ProcessInfo.processInfo.systemUptime : nil
-            self.lastSubmittedUptime = nil
+            self.startedAtUptime = nil
         }
     }
 
@@ -220,7 +238,7 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
                         "source": "live_camera",
                         "running_mode": "video",
                         "camera_preset": "hd1280x720",
-                        "target_frame_interval_s": String(format: "%.3f", targetFrameIntervalSeconds),
+                        "camera_target_fps": "30",
                         "model": "pose_landmarker_full.task"
                     ]
                 ),
@@ -246,7 +264,6 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
                 let startDate = Date()
                 let startUptime = ProcessInfo.processInfo.systemUptime
                 self.startedAtUptime = startUptime
-                self.lastSubmittedUptime = nil
 
                 if !self.captureSession.isRunning {
                     self.captureSession.startRunning()
@@ -290,6 +307,13 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
             throw PoseEstimatorError.engineUnavailable("Cannot add rear camera input.")
         }
         captureSession.addInput(input)
+        do {
+            try configureFrameRate(for: device)
+        } catch {
+            captureSession.removeInput(input)
+            captureSession.commitConfiguration()
+            throw error
+        }
 
         videoOutput.alwaysDiscardsLateVideoFrames = true
         videoOutput.videoSettings = [
@@ -298,12 +322,30 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
         videoOutput.setSampleBufferDelegate(self, queue: captureQueue)
 
         guard captureSession.canAddOutput(videoOutput) else {
+            captureSession.removeInput(input)
             captureSession.commitConfiguration()
             throw PoseEstimatorError.engineUnavailable("Cannot add video data output.")
         }
         captureSession.addOutput(videoOutput)
         captureSession.commitConfiguration()
         isConfigured = true
+    }
+
+    private func configureFrameRate(for device: AVCaptureDevice) throws {
+        let targetFPS = 30.0
+        let supportsTarget = device.activeFormat.videoSupportedFrameRateRanges.contains { range in
+            range.minFrameRate <= targetFPS && targetFPS <= range.maxFrameRate
+        }
+
+        guard supportsTarget else {
+            throw PoseEstimatorError.engineUnavailable("Rear camera format does not support 30 FPS.")
+        }
+
+        try device.lockForConfiguration()
+        let frameDuration = CMTime(value: 1, timescale: 30)
+        device.activeVideoMinFrameDuration = frameDuration
+        device.activeVideoMaxFrameDuration = frameDuration
+        device.unlockForConfiguration()
     }
 
     private func makeLandmarker() throws -> PoseLandmarker {
@@ -368,14 +410,6 @@ extension LiveMediaPipeCameraModel: AVCaptureVideoDataOutputSampleBufferDelegate
         }
 
         let now = ProcessInfo.processInfo.systemUptime
-        if let lastSubmittedUptime, now - lastSubmittedUptime < targetFrameIntervalSeconds {
-            DispatchQueue.main.async {
-                self.metrics.droppedFrames += 1
-            }
-            return
-        }
-        lastSubmittedUptime = now
-
         let timestampMilliseconds = Int(((now - startedAtUptime) * 1000).rounded())
         let timestampSeconds = Double(timestampMilliseconds) / 1000
         let startedProcessing = ProcessInfo.processInfo.systemUptime
@@ -400,11 +434,12 @@ extension LiveMediaPipeCameraModel: AVCaptureVideoDataOutputSampleBufferDelegate
                 self.metrics.processedFrames += 1
                 self.metrics.framesWithPose += hasPose ? 1 : 0
                 self.metrics.totalLatencyMilliseconds += latencyMilliseconds
+                self.metrics.latencySamplesMilliseconds.append(latencyMilliseconds)
                 self.metrics.latestLatencyMilliseconds = latencyMilliseconds
 
+                self.metrics.latestFrameConfidence = frameConfidence
                 if let frameConfidence {
                     self.metrics.totalFrameConfidence += frameConfidence
-                    self.metrics.latestFrameConfidence = frameConfidence
                 }
             }
         } catch {
@@ -413,6 +448,17 @@ extension LiveMediaPipeCameraModel: AVCaptureVideoDataOutputSampleBufferDelegate
                 self.metrics.elapsedSeconds = self.metrics.startedAt.map { Date().timeIntervalSince($0) }
                 self.statusMessage = "Live frame failed: \(error.localizedDescription)"
             }
+        }
+    }
+
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didDrop sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        DispatchQueue.main.async {
+            self.metrics.captureDroppedFrames += 1
+            self.metrics.elapsedSeconds = self.metrics.startedAt.map { Date().timeIntervalSince($0) }
         }
     }
 }
@@ -474,10 +520,11 @@ private struct LiveCameraMetricsExport: Codable {
         var elapsedSeconds: Double?
         var processedFrames: Int
         var framesWithPose: Int
-        var droppedFrames: Int
+        var captureDroppedFrames: Int
         var failedFrames: Int
         var effectiveFPS: Double?
         var averageLatencyMilliseconds: Double?
+        var medianLatencyMilliseconds: Double?
         var latestLatencyMilliseconds: Double?
         var averageFrameConfidence: Double?
         var latestFrameConfidence: Double?
@@ -486,10 +533,11 @@ private struct LiveCameraMetricsExport: Codable {
             case elapsedSeconds = "elapsed_s"
             case processedFrames = "processed_frames"
             case framesWithPose = "frames_with_pose"
-            case droppedFrames = "dropped_frames"
+            case captureDroppedFrames = "capture_dropped_frames"
             case failedFrames = "failed_frames"
             case effectiveFPS = "effective_fps"
             case averageLatencyMilliseconds = "average_latency_ms"
+            case medianLatencyMilliseconds = "median_latency_ms"
             case latestLatencyMilliseconds = "latest_latency_ms"
             case averageFrameConfidence = "average_frame_confidence"
             case latestFrameConfidence = "latest_frame_confidence"
@@ -499,10 +547,11 @@ private struct LiveCameraMetricsExport: Codable {
             self.elapsedSeconds = metrics.elapsedSeconds
             self.processedFrames = metrics.processedFrames
             self.framesWithPose = metrics.framesWithPose
-            self.droppedFrames = metrics.droppedFrames
+            self.captureDroppedFrames = metrics.captureDroppedFrames
             self.failedFrames = metrics.failedFrames
             self.effectiveFPS = metrics.effectiveFPS
             self.averageLatencyMilliseconds = metrics.averageLatencyMilliseconds
+            self.medianLatencyMilliseconds = metrics.medianLatencyMilliseconds
             self.latestLatencyMilliseconds = metrics.latestLatencyMilliseconds
             self.averageFrameConfidence = metrics.averageFrameConfidence
             self.latestFrameConfidence = metrics.latestFrameConfidence

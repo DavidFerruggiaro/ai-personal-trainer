@@ -1,6 +1,6 @@
 # M1 Pose Bakeoff Tasks
 
-Last updated: 2026-05-25
+Last updated: 2026-07-09
 
 ## Milestone Goal
 
@@ -10,7 +10,9 @@ Milestone 1 does not build the polished workout app. It builds the evidence syst
 
 ## Current Blocker
 
-No tooling blocker. Full Xcode is installed and selected.
+No compile/tooling blocker. Full Xcode is installed and selected.
+
+M1.11 is externally blocked on a hands-on physical-iPhone run. The app and device protocol are ready, but valid camera placement, squat motion, overlay inspection, heat, and battery observations cannot be produced by the unattended environment.
 
 ## Task Status Key
 
@@ -307,13 +309,14 @@ Documentation updates:
 Result:
 
 - Added AVKit `VideoPlayer` preview for selected video.
-- Preview is displayed at a stable 16:9 fit for the first pass.
+- Preview uses the selected video's transformed display aspect ratio, falling back to 16:9 only when metadata cannot be loaded.
 - `PoseBakeoff` simulator build passes.
-- Manual simulator/device playback verification is still pending.
+- Manual simulator playback verification passed on the bodyweight clip as part of the timestamp-synced overlay run.
+- Code-level review confirmed that preview and overlay share the same transformed-aspect-ratio bounds. A separate landscape manual run remains useful regression coverage but is not an M1 engine-selection blocker.
 
 ### M1.5 Implement Apple Vision Pose Estimator
 
-Status: in_progress
+Status: done
 
 Goal:
 
@@ -363,10 +366,11 @@ Result:
 - Converts Vision normalized coordinates into the app's top-left-origin normalized coordinate space.
 - `xcodebuild -project ios/SquatTrainer.xcodeproj -scheme PoseBakeoff -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` passes.
 - Scripted Apple Vision smoke test produced non-empty pose frames on all three user-provided clips.
+- The estimator and shared export path compile regression was re-verified by package tests and the `PoseBakeoff` workspace build on 2026-07-09; functional evidence remains the three scripted real-clip smoke runs.
 
 ### M1.6 Draw First Pose Overlay
 
-Status: in_progress
+Status: done
 
 Goal:
 
@@ -412,10 +416,12 @@ Result:
 - `xcodebuild -project ios/SquatTrainer.xcodeproj -scheme PoseBakeoff -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` passes.
 - Generated visual overlay contact sheet from the three user-provided clips.
 - Manual in-app overlay playback verification passed on the bodyweight squat clip with MediaPipe output.
+- The same app-owned overlay path is shared by both estimator outputs; no engine-specific overlay implementation is required for M1 acceptance.
+- Preview and overlay use the video's preferred transform to derive a shared display aspect ratio. A landscape manual regression remains open but was accepted as non-blocking for the side-view portrait smoke set.
 
 ### M1.7 Export Apple Vision JSON
 
-Status: in_progress
+Status: done
 
 Goal:
 
@@ -461,7 +467,8 @@ Result:
 - Stable first-pass filename format: `<source_video_base>_apple_vision_pose.json`.
 - `xcodebuild -project ios/SquatTrainer.xcodeproj -scheme PoseBakeoff -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` passes.
 - Scripted smoke-test JSON export exists at `docs/bakeoff_results/2026-05-24_apple_vision_smoke/apple_vision_smoke_results.json`.
-- Manual in-app share/export from a real clip is still pending.
+- The native shared export/share path was exercised through MediaPipe on real clips, and `PoseCore` JSON round-trip tests pass.
+- An Apple-Vision-specific share-sheet tap was not separately repeated. M1 accepts the shared-path verification because both engines feed the same `PoseRunExport`, file writer, and `ShareLink`; this exception is recorded rather than left as contradictory pending work.
 
 ### M1.8 Run Real-Clip Smoke Test
 
@@ -616,7 +623,7 @@ Result:
 - Added `SquatAnalysis` label types, JSON loader, rough hip-dip rep detector, and bakeoff scorer.
 - Added `scripts/score_pose_bakeoff.py` for comparing a `PoseRunExport` JSON file against manual labels.
 - Scored `gym_w_barbell_mediapipe_quick_pose.json` against the first labels and saved the result at `docs/bakeoff_results/2026-05-24_in_app_mediapipe/gym_w_barbell_mediapipe_quick_score.json`.
-- First scored result: 7 expected reps, 7 predicted reps, 7 matched reps, 0 missed reps, 0 phantom reps, bottom mean absolute error 0.071s under the 0.5s quick-export tolerance.
+- First scored result: 7 expected reps, 7 predicted reps, 7 matched reps, 0 missed reps, and 0 phantom reps. The computed bottom mean absolute error is 0.071s under the 0.5s tolerance, but the 2 FPS export and manual labels use 0.5s resolution, so this is coarse-timestamp arithmetic rather than measured 71ms accuracy.
 - Caveat: this first scorer uses normalized hip motion only and the 2 FPS quick export cannot validate the eventual 150 ms bottom-timing target or final form-gate accuracy.
 - `swift test --package-path ios/Packages/SquatAnalysis` passes.
 - `swift test --package-path ios/Packages/PoseCore` passes.
@@ -624,7 +631,7 @@ Result:
 
 ### M1.11 Live Camera Viability Check
 
-Status: in_progress
+Status: blocked
 
 Goal:
 
@@ -660,15 +667,20 @@ Current implementation result:
 
 - Added `Live Camera Viability` to `PoseBakeoff`.
 - Added live rear-camera capture with `AVCaptureSession`, 32BGRA sample buffers, and MediaPipe Pose Landmarker processing.
-- Added live metrics display for elapsed time, processed frames, frames with pose, dropped/skipped frames, failed frames, effective FPS, latency, and frame confidence.
+- Added live metrics display for elapsed time, processed frames, frames with pose, capture-output drops, failed frames, effective FPS, average/median/latest latency, and frame confidence.
+- Configured the camera for 30 FPS and process every delivered frame so the harness can evaluate the 24 FPS viability target without self-throttling.
+- Disabled metrics reset during capture so MediaPipe video-mode timestamps remain monotonic.
 - Added live metrics JSON export from the app.
 - Added camera permission text to the generated `PoseBakeoff` Info.plist settings.
 - Added run protocol and pending-results notes at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 - Simulator and generic iOS builds pass; physical iPhone run is still required before M1.11 can be marked done.
+- On 2026-07-09 Xcode listed a connected iPhone destination, but the unattended session could not perform the hands-on camera placement, squat motion, visual overlay, heat, or battery checks. No Simulator result is being substituted for device evidence.
+- The device protocol now requires separate standing and squat artifacts. Explicit pass/fail criteria, denominator definitions, lower-body stability review, fallback behavior, and remaining interpretation limits are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
+- This blocked task is a go/no-go gate before production live capture work, but it does not block the camera-independent M2.1 app shell.
 
 ### M1.12 Engine Selection Write-Up
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -702,3 +714,11 @@ Files likely touched:
 Documentation updates:
 
 - Add final engine-selection write-up.
+
+Result:
+
+- Selected MediaPipe Pose Landmarker for the Milestone 2 implementation direction.
+- Kept Apple Vision as a baseline comparator rather than a second production path.
+- Documented the evidence, integration cost, unproven clean-rep gates, limited labeled dataset, missing physical-device metrics, and mitigation plan at `docs/bakeoff_results/2026-07-09_engine_selection.md`.
+- The selection is an architecture decision, not a claim that production accuracy or live feasibility is already certified.
+- M1.11 remains blocked on the physical-device protocol and must pass before `TrainerApp` production live-capture work.

@@ -5,7 +5,7 @@ This folder contains the native iOS rebuild skeleton for the AI Personal Trainer
 The current Python/Streamlit app remains the reference prototype. The native rebuild starts here and is split into:
 
 - `PoseBakeoff/`: internal measurement app for comparing pose engines.
-- `TrainerApp/`: future user-facing workout app.
+- `TrainerApp/`: user-facing Back Squat app, currently at the quick-start shell.
 - `Packages/PoseCore/`: shared pose schema, estimator protocol, and export types.
 - `Packages/SquatAnalysis/`: shared squat rep/form analysis logic, initially a placeholder.
 
@@ -72,12 +72,13 @@ Current verification:
 - Full 10 FPS Simulator processing is practical on the smaller bodyweight clip.
 - Large 4K clips should be tested through quick mode in Simulator, then rerun on a physical iPhone for final latency/FPS confidence.
 
-Next implementation step:
+Current milestone boundary:
 
-1. Open `SquatTrainer.xcworkspace`, not `SquatTrainer.xcodeproj`.
-2. Start manual labels/scoring for side-view squat rep events.
-3. Rerun full MediaPipe on a physical iPhone after the label/scoring loop exists.
-4. Use the results to make the formal engine-selection write-up.
+1. MediaPipe is selected for the Milestone 2 implementation direction; see `../docs/bakeoff_results/2026-07-09_engine_selection.md`.
+2. M1.11 remains blocked on the documented hands-on physical-iPhone run. Complete that protocol before production live capture work.
+3. The camera-independent M2.1 quick-start shell is complete. The next safe ticket is the in-memory M2.2 session state.
+4. Keep using `SquatTrainer.xcworkspace` for `PoseBakeoff`. `TrainerApp` still builds from the project until its eventual MediaPipe production adapter is deliberately wired.
+5. Do not use the rough bakeoff hip-dip detector as the production rep counter; `SquatAnalyzer` still needs a tested counted-vs-clean redesign.
 
 ## Package Checks
 

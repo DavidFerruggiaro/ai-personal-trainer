@@ -1,6 +1,6 @@
 # M2 Back Squat Vertical Slice Tasks
 
-Last updated: 2026-05-24
+Last updated: 2026-07-09
 
 ## Milestone Goal
 
@@ -15,7 +15,9 @@ Do not start Milestone 2 implementation until:
 - Full Xcode is installed and selected.
 - `PoseBakeoff` builds.
 - Apple Vision vs MediaPipe engine decision is documented.
-- The chosen engine can run through the shared `PoseEstimator` path.
+- The chosen engine can run prerecorded clips through the shared `PoseEstimator` path.
+
+The shared protocol does not yet cover live sample buffers. A production live-pose abstraction is an additional dependency before camera-backed setup checks or active capture, not before camera-independent session/UI tickets.
 
 ## Task Status Key
 
@@ -44,7 +46,7 @@ Start Session
 
 ### M2.0 Confirm Engine And Architecture Baseline
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -57,7 +59,7 @@ Milestone 2 depends on Milestone 1. The real app should consume normalized pose 
 Tasks:
 
 - Read final engine-selection write-up.
-- Confirm selected engine implementation is behind `PoseEstimator`.
+- Confirm the selected prerecorded engine implementation is behind `PoseEstimator`.
 - Confirm normalized pose schema is stable enough for app use.
 - Confirm `SquatAnalysis` owns rep/form logic.
 - Confirm UI will not own analysis logic.
@@ -82,9 +84,19 @@ Documentation updates:
 
 - Record engine selected and any known caveats.
 
+Result:
+
+- MediaPipe Pose Landmarker is selected for M2 implementation in `docs/bakeoff_results/2026-07-09_engine_selection.md`.
+- MediaPipe prerecorded estimation conforms to the app-owned `PoseEstimator` protocol and exports `PoseCore` types.
+- `TrainerApp` already links `PoseCore` and `SquatAnalysis`; its UI exposes no engine-native types.
+- `SquatAnalyzer` remains the owner of future rep/form logic, but its current production API is only a placeholder. The M1 bakeoff detector must not be presented as production analysis.
+- The current live-camera harness is `PoseBakeoff`-specific and bypasses the prerecorded-only estimator protocol. A production live-pose abstraction remains a focused prerequisite for later setup/capture tickets, not M2.1 shell scope.
+- M1.11 physical-device viability is still blocked and remains a go/no-go gate before camera-backed setup checks, production capture, or real-time tracking in `TrainerApp`.
+- On 2026-07-09 both shared package test suites and both app build checks passed.
+
 ### M2.1 Create TrainerApp Shell
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -118,6 +130,17 @@ Files likely touched:
 Documentation updates:
 
 - Add first screen notes if decisions change.
+
+Result:
+
+- Replaced the pose-bakeoff placeholder message with a restrained `Quick Start` root screen.
+- The only supported workout entry is `Back Squat`, labeled for barbell side-view capture.
+- Added a prominent `Start Quick Session` navigation action and a narrow Back Squat session shell with an `End Quick Session` exit.
+- Kept the change in the existing `TrainerRootView.swift` file, avoiding manual Xcode project-file churn.
+- Added no tabs, planned workouts, templates, history, unsupported exercises, camera simulation, persistence, or analysis claims.
+- `TrainerApp` built successfully for the generic iOS Simulator on 2026-07-09.
+- Installed and launched `com.aiPersonalTrainer.TrainerApp` on an iPhone 16 / iOS 18.6 simulator; visual inspection confirmed the quick-start root renders correctly.
+- The `NavigationLink` destination and dismiss paths compile, but an automated tap-through could not be completed because the local computer-use runtime failed to start. Do not treat that as a physical interaction result.
 
 ### M2.2 Implement Quick-Start Session State
 

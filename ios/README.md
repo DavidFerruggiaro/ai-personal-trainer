@@ -79,7 +79,7 @@ Current milestone boundary:
 
 1. MediaPipe is selected for the Milestone 2 implementation direction; see `../docs/bakeoff_results/2026-07-09_engine_selection.md`.
 2. M1.11 remains blocked on the documented hands-on physical-iPhone run. Complete that protocol before production live capture work.
-3. The camera-independent M2.1 shell and M2.2 in-memory session lifecycle are complete. The next safe ticket is M2.3 supported-exercise catalog wiring.
+3. The camera-independent M2.1 shell, M2.2 session lifecycle, and M2.3 supported-exercise catalog wiring are complete. The next safe ticket is M2.4 load entry/defaulting.
 4. Keep using `SquatTrainer.xcworkspace` for `PoseBakeoff`. `TrainerApp` still builds from the project until its eventual MediaPipe production adapter is deliberately wired.
 5. Do not use the rough bakeoff hip-dip detector as the production rep counter; `SquatAnalyzer` still needs a tested counted-vs-clean redesign.
 

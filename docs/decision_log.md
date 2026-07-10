@@ -69,3 +69,6 @@ This log records product and technical decisions that future agents should not r
 - `TrainerApp` now creates a session on quick-start navigation, displays the live set ordinal and completed-set count, advances sets through an explicitly non-analyzing/non-saving seam, and marks the session ended before dismissal.
 - `TrainerCore` tests pass (3 tests), both existing package suites pass, and both `TrainerApp` and `PoseBakeoff` Simulator builds pass. `TrainerCore` is absent from the `PoseBakeoff` target dependency graph.
 - The iPhone 16 / iOS 18.6 Simulator installed, launched, and rendered `TrainerApp`; mechanical tap-through remained unavailable because the local computer-use runtime failed to start.
+- Completed M2.3 by encoding the predefined v1 exercise catalog in `TrainerCore`: `back_squat` is supported, while goblet, bodyweight, dumbbell, and kettlebell squat IDs remain planned. The model can also represent disabled entries.
+- The quick-start UI now renders only `ExerciseCatalog.v1.supportedExercises` and attaches the selected stable exercise ID to the session. Planned/disabled movements remain absent from the lifting flow.
+- Four catalog/selection tests bring the `TrainerCore` suite to seven passing tests. `TrainerApp` and the isolated `PoseBakeoff` target both retain passing Simulator builds.

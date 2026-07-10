@@ -1,16 +1,5 @@
 import Foundation
 
-public struct ExerciseID: Hashable, Sendable {
-    public let rawValue: String
-
-    public init(rawValue: String) {
-        precondition(!rawValue.isEmpty, "Exercise IDs must not be empty")
-        self.rawValue = rawValue
-    }
-
-    public static let backSquat = ExerciseID(rawValue: "back_squat")
-}
-
 public struct SetDraft: Equatable, Identifiable, Sendable {
     public let id: UUID
     public let ordinal: Int

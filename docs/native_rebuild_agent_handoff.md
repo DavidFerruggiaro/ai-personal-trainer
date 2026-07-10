@@ -188,7 +188,7 @@ Current M1 state:
 - M1.11 is blocked pending a hands-on physical-iPhone run. A connected iPhone destination was visible to Xcode on 2026-07-09, but the unattended session could not perform camera placement, squat motion, visual overlay inspection, heat, or battery checks.
 - The device protocol and measurement limitations are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 - Camera-independent Milestone 2 work may proceed. The physical-device artifact remains a go/no-go gate before camera-backed setup checks, production live capture, or real-time tracking; it does not block setup-gate UI/state modeling.
-- M2.0 through M2.2 are complete. `TrainerApp` now launches to a single Back Squat quick-start entry backed by an in-memory `QuickSession`; it tracks the current set, ordered completed sets, and explicit end state. It does not yet own a catalog-driven entry, weight input, camera setup, persistence, or analysis.
+- M2.0 through M2.3 are complete. `TrainerApp` now derives its single supported Back Squat quick-start entry from the predefined catalog and starts an in-memory `QuickSession`; it tracks the current set, ordered completed sets, and explicit end state. It does not yet own weight input, camera setup, persistence, or analysis.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -649,8 +649,8 @@ Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
 2. M1.11 is blocked on the hands-on physical-device protocol and must pass before production live capture work.
-3. M2.1 and M2.2 are complete: the narrow Back Squat quick-start shell now owns a tested, in-memory session lifecycle without camera or persistence work.
-4. The next safe build ticket is M2.3: derive the existing Back Squat entry from the predefined supported-exercise catalog while hiding planned/disabled exercises.
+3. M2.1 through M2.3 are complete: the narrow quick-start shell owns a tested in-memory session lifecycle and derives its only visible option, Back Squat, from the supported catalog.
+4. The next safe build ticket is M2.4: add pounds-default load entry to the current set and carry the previous completed set's exact value/unit into the next set.
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
 6. The later analyzer port must intentionally separate counted reps from clean reps; the Python state machine is reference logic, not a literal Swift specification.
 

@@ -195,7 +195,7 @@ Result:
 
 ### M2.3 Add Supported Exercise Selection
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -231,6 +231,16 @@ Files likely touched:
 Documentation updates:
 
 - Update catalog docs if exercise IDs change.
+
+Result:
+
+- Added the locked v1 catalog to `TrainerCore` with stable IDs and explicit `supported`, `planned`, and `disabled` availability states.
+- `back_squat` is the only supported entry. `goblet_squat`, `bodyweight_squat`, `dumbbell_squat`, and `kettlebell_squat` remain planned.
+- The normal quick-start flow is derived from `supportedExercises`; it renders only the Back Squat card and passes that catalog entry's stable ID into `QuickSession`.
+- Planned and disabled entries have no selectable lookup result and are not rendered as teasers, disabled cards, or roadmap content in the lifting flow.
+- Added four catalog tests covering the single supported exercise, all four planned IDs, disabled-entry filtering, and propagation of the selected ID into the session/current set. The full `TrainerCore` suite passes with seven tests.
+- On 2026-07-10, `TrainerApp` built, installed, launched, and rendered the catalog-driven root on an iPhone 16 / iOS 18.6 simulator. A fresh screenshot showed only Back Squat. `PoseBakeoff` also retained a passing Simulator build and no `TrainerCore` target dependency.
+- A mechanical tap-through into the selected Back Squat session was not completed because the local computer-use runtime failed to start. Catalog filtering and selected-ID propagation are automated tests; this result does not claim a manual selection interaction.
 
 ### M2.4 Add Weight Entry With Defaults
 

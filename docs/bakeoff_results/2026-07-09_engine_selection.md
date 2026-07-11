@@ -2,7 +2,7 @@
 
 Decision date: 2026-07-09
 
-Status: MediaPipe selected for Milestone 2 implementation; physical-device live viability remains an open gate.
+Status: MediaPipe selected for Milestone 2 implementation; M1.11 portrait physical-device live viability passed on 2026-07-10.
 
 ## Decision
 
@@ -55,9 +55,9 @@ Not yet proven for either engine. Depth, lockout, tempo/control, and torso-angle
 
 ### Live latency and FPS
 
-Not yet measured on a physical iPhone. Simulator sample rates are configuration/output rates, not on-device inference throughput.
+M1.11 later passed on an iPhone 16 Pro Max running iOS 26.5. The qualifying portrait standing artifact recorded 29.90 FPS, 10.87 ms median latency, 95.35% pose presence, zero inference failures, and zero capture drops. The qualifying side-view bodyweight-squat artifact recorded 25.52 FPS, 10.57 ms median latency, 90.47% pose presence, zero inference failures, and five capture drops.
 
-`PoseBakeoff` contains the M1.11 live MediaPipe harness, but the current environment cannot complete the hands-on protocol: camera permission, physical framing, squat movement, visual overlay inspection, heat, and battery notes all require a person with the connected phone. The harness now configures the camera for 30 FPS, processes every delivered frame, records capture-output drops, and reports median latency. M1.11 therefore remains blocked pending valid, separate standing and squat device runs.
+An initial live overlay was systematically displaced because preview and analysis used different rotation paths. Rotating both capture connections to portrait and passing the already-portrait sample buffer to MediaPipe as `.up` corrected alignment. Mild drift remained only on far-side lower-body landmarks when self-occluded behind the near leg; visibly unoccluded near-side joints remained usable. The app had no crash, stall, permission issue, or abnormal heat. Battery drain was not independently measurable because the phone was tethered and charging.
 
 The first-pass MediaPipe viability gate requires at least 24 processed FPS, median inference latency below 75ms, pose in at least 90% of processed full-body-visible frames, failed inference at or below 1%, and no crash, sustained stall, thermal warning, systematic overlay misalignment, or obvious systematic hip/knee/ankle instability during the squat pass. Full protocol and fallback behavior are in `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 
@@ -75,8 +75,9 @@ That cost is acceptable because tracking quality is the deciding criterion and M
 
 - **Small evidence set:** three smoke clips and one labeled barbell clip. Expand the labeled side-view back-squat regression set during analysis hardening.
 - **No clean-gate evidence:** add shallow, soft-lockout, tempo, torso, occlusion, and low-confidence labels before claiming clean-rep accuracy.
-- **No physical-device metrics:** complete M1.11 before wiring or claiming camera-backed setup checks, production live capture, or real-time tracking in `TrainerApp`.
-- **Orientation uncertainty:** use portrait for the first device protocol or make sample-buffer orientation explicit before accepting landscape results.
+- **Live feasibility is narrow:** M1.11 validates portrait device feasibility only. Production setup/capture still needs a shared live-pose abstraction and real `TrainerApp` verification.
+- **Landscape orientation remains unverified:** keep the portrait sample-buffer contract explicit before accepting any later landscape result.
+- **Side-view self-occlusion:** far-side hip, knee, and ankle landmarks may drift when blocked by the near leg. Base v1 side-view analysis on usable visible-side signals and confidence rather than requiring both sides continuously.
 - **Pose coordinate contract:** MediaPipe can return landmarks outside the image bounds. Decide whether normalized coordinates are intentionally unbounded or clamped/flagged before production analysis.
 - **No comparable labeled Apple Vision score:** retain the baseline path so a later regression can be run without reopening architecture.
 - **Production analyzer missing:** do not wire the M1 hip-dip detector into the product as if it were the final rep counter. Port/redesign counted-vs-clean semantics in `SquatAnalysis` with tests.
@@ -85,4 +86,4 @@ That cost is acceptable because tracking quality is the deciding criterion and M
 
 M1.12 is complete: MediaPipe is the selected implementation direction and Milestone 2 no longer needs to reopen the engine debate.
 
-M1.11 remains blocked on a hands-on physical-device run. Camera-independent M2 work may proceed, beginning with the narrow quick-start back-squat shell. The device viability artifact is a go/no-go gate before camera-backed setup checks, production live capture, or real-time tracking work in `TrainerApp`; it does not block setup-gate UI/state modeling.
+M1.11 now passes the portrait physical-device protocol. Camera-backed M2 work is no longer blocked by live feasibility, but production setup checks, capture, and real-time tracking still require a deliberate shared live-pose abstraction and `TrainerApp` device verification.

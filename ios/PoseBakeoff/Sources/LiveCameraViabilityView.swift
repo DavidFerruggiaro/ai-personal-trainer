@@ -239,6 +239,8 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
                         "running_mode": "video",
                         "camera_preset": "hd1280x720",
                         "camera_target_fps": "30",
+                        "sample_buffer_orientation": "portrait",
+                        "mp_image_orientation": "up",
                         "model": "pose_landmarker_full.task"
                     ]
                 ),
@@ -327,6 +329,16 @@ private final class LiveMediaPipeCameraModel: NSObject, ObservableObject {
             throw PoseEstimatorError.engineUnavailable("Cannot add video data output.")
         }
         captureSession.addOutput(videoOutput)
+
+        guard let videoConnection = videoOutput.connection(with: .video),
+              videoConnection.isVideoRotationAngleSupported(90) else {
+            captureSession.removeOutput(videoOutput)
+            captureSession.removeInput(input)
+            captureSession.commitConfiguration()
+            throw PoseEstimatorError.engineUnavailable("Rear camera output cannot rotate to portrait.")
+        }
+        videoConnection.videoRotationAngle = 90
+
         captureSession.commitConfiguration()
         isConfigured = true
     }
@@ -415,7 +427,7 @@ extension LiveMediaPipeCameraModel: AVCaptureVideoDataOutputSampleBufferDelegate
         let startedProcessing = ProcessInfo.processInfo.systemUptime
 
         do {
-            let image = try MPImage(sampleBuffer: sampleBuffer, orientation: .right)
+            let image = try MPImage(sampleBuffer: sampleBuffer, orientation: .up)
             let result = try landmarker.detect(
                 videoFrame: image,
                 timestampInMilliseconds: timestampMilliseconds
@@ -564,13 +576,12 @@ private struct CameraPreviewView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> CameraPreviewUIView {
         let view = CameraPreviewUIView()
-        view.previewLayer.session = session
-        view.previewLayer.videoGravity = .resizeAspectFill
+        view.configure(session: session)
         return view
     }
 
     func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
-        uiView.previewLayer.session = session
+        uiView.configure(session: session)
     }
 }
 
@@ -581,5 +592,15 @@ private final class CameraPreviewUIView: UIView {
 
     var previewLayer: AVCaptureVideoPreviewLayer {
         layer as! AVCaptureVideoPreviewLayer
+    }
+
+    func configure(session: AVCaptureSession) {
+        previewLayer.session = session
+        previewLayer.videoGravity = .resizeAspect
+
+        if let connection = previewLayer.connection,
+           connection.isVideoRotationAngleSupported(90) {
+            connection.videoRotationAngle = 90
+        }
     }
 }

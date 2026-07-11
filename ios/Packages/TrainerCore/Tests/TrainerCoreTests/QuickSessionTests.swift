@@ -27,12 +27,17 @@ struct QuickSessionTests {
         let secondCompletedAt = Date(timeIntervalSince1970: 150)
 
         try session.setCurrentSetLoad(load)
-        let first = try session.completeCurrentSet(at: firstCompletedAt, nextSetID: secondSetID)
-        let second = try session.completeCurrentSet(at: secondCompletedAt, nextSetID: thirdSetID)
+        let first = try session.advanceCurrentSetForCameraIndependentTesting(
+            at: firstCompletedAt,
+            nextSetID: secondSetID
+        )
+        let second = try session.advanceCurrentSetForCameraIndependentTesting(
+            at: secondCompletedAt,
+            nextSetID: thirdSetID
+        )
 
         #expect(first == CompletedSetSummary(
             draft: SetDraft(id: firstSetID, ordinal: 1, exerciseID: .backSquat, load: load),
-            load: load,
             completedAt: firstCompletedAt
         ))
         #expect(second.ordinal == 2)
@@ -55,7 +60,7 @@ struct QuickSessionTests {
         #expect(!session.isActive)
         #expect(session.endedAt == endedAt)
         #expect(throws: QuickSessionError.sessionEnded) {
-            try session.completeCurrentSet(nextSetID: secondSetID)
+            try session.advanceCurrentSetForCameraIndependentTesting(nextSetID: secondSetID)
         }
         #expect(throws: QuickSessionError.sessionEnded) {
             try session.setCurrentSetLoad(TrainingLoad(value: 185, unit: .pounds))

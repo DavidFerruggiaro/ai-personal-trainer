@@ -5,18 +5,25 @@ public struct SetDraft: Equatable, Identifiable, Sendable {
     public let ordinal: Int
     public let exerciseID: ExerciseID
     public let load: TrainingLoad?
+    public let setupGateOutcome: SetupGateOutcome?
 
-    public init(
+    init(
         id: UUID,
         ordinal: Int,
         exerciseID: ExerciseID,
-        load: TrainingLoad? = nil
+        load: TrainingLoad? = nil,
+        setupGateOutcome: SetupGateOutcome? = nil
     ) {
         precondition(ordinal > 0, "Set ordinals must be positive")
+        precondition(
+            setupGateOutcome == nil || load != nil,
+            "A setup-gate outcome requires a loaded set draft"
+        )
         self.id = id
         self.ordinal = ordinal
         self.exerciseID = exerciseID
         self.load = load
+        self.setupGateOutcome = setupGateOutcome
     }
 }
 
@@ -25,13 +32,22 @@ public struct CompletedSetSummary: Equatable, Identifiable, Sendable {
     public let ordinal: Int
     public let exerciseID: ExerciseID
     public let load: TrainingLoad
+    public let setupGateOutcome: SetupGateOutcome?
     public let completedAt: Date
 
-    public init(draft: SetDraft, load: TrainingLoad, completedAt: Date) {
+    init(
+        draft: SetDraft,
+        completedAt: Date
+    ) {
+        guard let load = draft.load else {
+            preconditionFailure("A completed set summary requires load")
+        }
+
         id = draft.id
         ordinal = draft.ordinal
         exerciseID = draft.exerciseID
         self.load = load
+        setupGateOutcome = draft.setupGateOutcome
         self.completedAt = completedAt
     }
 }
@@ -39,6 +55,7 @@ public struct CompletedSetSummary: Equatable, Identifiable, Sendable {
 public enum QuickSessionError: Error, Equatable, Sendable {
     case sessionEnded
     case missingLoad
+    case missingSetupGateOutcome
 }
 
 public struct QuickSession: Equatable, Identifiable, Sendable {
@@ -79,10 +96,43 @@ public struct QuickSession: Equatable, Identifiable, Sendable {
         guard let load = currentSet.load else {
             throw QuickSessionError.missingLoad
         }
+        guard currentSet.setupGateOutcome != nil else {
+            throw QuickSessionError.missingSetupGateOutcome
+        }
 
+        return finalizeCurrentSet(
+            load: load,
+            completedAt: completedAt,
+            nextSetID: nextSetID
+        )
+    }
+
+    @discardableResult
+    public mutating func advanceCurrentSetForCameraIndependentTesting(
+        at completedAt: Date = Date(),
+        nextSetID: UUID = UUID()
+    ) throws -> CompletedSetSummary {
+        guard isActive else {
+            throw QuickSessionError.sessionEnded
+        }
+        guard let load = currentSet.load else {
+            throw QuickSessionError.missingLoad
+        }
+
+        return finalizeCurrentSet(
+            load: load,
+            completedAt: completedAt,
+            nextSetID: nextSetID
+        )
+    }
+
+    private mutating func finalizeCurrentSet(
+        load: TrainingLoad,
+        completedAt: Date,
+        nextSetID: UUID
+    ) -> CompletedSetSummary {
         let completedSet = CompletedSetSummary(
             draft: currentSet,
-            load: load,
             completedAt: completedAt
         )
         completedSets.append(completedSet)
@@ -90,7 +140,8 @@ public struct QuickSession: Equatable, Identifiable, Sendable {
             id: nextSetID,
             ordinal: currentSet.ordinal + 1,
             exerciseID: exerciseID,
-            load: load
+            load: load,
+            setupGateOutcome: nil
         )
         return completedSet
     }
@@ -104,7 +155,25 @@ public struct QuickSession: Equatable, Identifiable, Sendable {
             id: currentSet.id,
             ordinal: currentSet.ordinal,
             exerciseID: currentSet.exerciseID,
-            load: load
+            load: load,
+            setupGateOutcome: currentSet.setupGateOutcome
+        )
+    }
+
+    public mutating func setCurrentSetSetupGateOutcome(_ outcome: SetupGateOutcome) throws {
+        guard isActive else {
+            throw QuickSessionError.sessionEnded
+        }
+        guard let load = currentSet.load else {
+            throw QuickSessionError.missingLoad
+        }
+
+        currentSet = SetDraft(
+            id: currentSet.id,
+            ordinal: currentSet.ordinal,
+            exerciseID: currentSet.exerciseID,
+            load: load,
+            setupGateOutcome: outcome
         )
     }
 

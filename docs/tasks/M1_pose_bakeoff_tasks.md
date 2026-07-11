@@ -1,6 +1,6 @@
 # M1 Pose Bakeoff Tasks
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Milestone Goal
 
@@ -10,9 +10,7 @@ Milestone 1 does not build the polished workout app. It builds the evidence syst
 
 ## Current Blocker
 
-No compile/tooling blocker. Full Xcode is installed and selected.
-
-M1.11 is externally blocked on a hands-on physical-iPhone run. The app and device protocol are ready, but valid camera placement, squat motion, overlay inspection, heat, and battery observations cannot be produced by the unattended environment.
+No M1.11 device blocker remains. The portrait standing and side-view squat artifacts pass the documented live-feasibility protocol. This does not close the larger labeled-dataset and clean-rep accuracy gaps.
 
 ## Task Status Key
 
@@ -631,7 +629,7 @@ Result:
 
 ### M1.11 Live Camera Viability Check
 
-Status: blocked
+Status: done
 
 Goal:
 
@@ -644,9 +642,9 @@ The engine choice should mostly come from prerecorded labeled clips, but live te
 Tasks:
 
 - Add small live camera mode in `PoseBakeoff`. Done.
-- Run selected engine on live frames. Implemented for MediaPipe; physical-device run pending.
-- Measure effective FPS, latency, dropped frames, confidence stability. Implemented in-app; physical-device metrics pending.
-- Record heat/battery notes manually. Pending physical-device run.
+- Run selected engine on live frames. Implemented and verified for MediaPipe on an iPhone 16 Pro Max.
+- Measure effective FPS, latency, dropped frames, confidence stability. Done with separate standing and qualifying squat artifacts.
+- Record heat/battery notes manually. Done; heat remained normal, while battery delta is explicitly unavailable because the phone was tethered and charging.
 
 Acceptance criteria:
 
@@ -673,10 +671,18 @@ Current implementation result:
 - Added live metrics JSON export from the app.
 - Added camera permission text to the generated `PoseBakeoff` Info.plist settings.
 - Added run protocol and pending-results notes at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
-- Simulator and generic iOS builds pass; physical iPhone run is still required before M1.11 can be marked done.
+- Simulator, generic iOS, and signed physical-device builds pass. The hands-on iPhone protocol is complete.
 - On 2026-07-09 Xcode listed a connected iPhone destination, but the unattended session could not perform the hands-on camera placement, squat motion, visual overlay, heat, or battery checks. No Simulator result is being substituted for device evidence.
 - The device protocol now requires separate standing and squat artifacts. Explicit pass/fail criteria, denominator definitions, lower-body stability review, fallback behavior, and remaining interpretation limits are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
-- This blocked task is a go/no-go gate before production live capture work, but it does not block the camera-independent M2.1 app shell.
+- On 2026-07-10, a real-iPhone standing run exported 29.91 effective FPS, 10.67 ms median latency, 96.9% pose presence, zero failed frames, and zero capture-output drops. It does **not** pass M1.11 because landmarks were visibly displaced up and right of the lifter. A narrow preview-orientation/aspect diagnostic change is build-verified but needs a five-second physical standing retest before collecting the squat artifact.
+- The preview-only change remained misaligned. Matching Google's official camera path fixed the transform: the data-output and preview connections now rotate to portrait, and MediaPipe receives the already-portrait buffer with `.up` orientation. A five-second physical retest visually aligned and tracked the tester.
+- The qualifying standing artifact records 29.90 FPS, 10.87 ms median latency, 95.35% pose presence, zero failures, and zero capture drops over 75.45 seconds including initial phone-positioning noise. Numeric and visual-alignment criteria pass; later run notes complete the environment/heat observations, while tethered charging makes battery delta uninterpretable.
+- A 63.01-second squat attempt also passed numeric throughput at 29.93 FPS, 10.62 ms median latency, 95.81% pose presence, zero failures, and zero capture drops. It is diagnostic only: a desk blocked the ankles, the tester hit the wall behind him, and lower-body stability could not be judged. The later clear-space artifact replaced it for acceptance.
+- The qualifying squat artifact with head-through-feet visibility passes every numeric gate: 25.52 FPS, 10.57 ms median latency, 90.47% pose presence, zero inference failures, and five capture drops. The run includes brief face-on setup frames before side-view bodyweight squats at approximately 5-6 ft, with normal phone heat and no stall/crash/permission issue.
+- Mild drift/jumps were limited to far-side hip, knee, and ankle landmarks when blocked by the near leg. This expected self-occlusion does not fail the explicit criterion for joints that remain visibly unoccluded; visible near-side lower-body tracking remained usable.
+- M1.11 passes. This validates portrait live feasibility only, not clean-rep gates, production accuracy, landscape orientation, or the production live-stream abstraction.
+- Stable test equipment is now an explicit need: use a compact adjustable phone tripod/stand positioned clear of the camera-to-lifter path, preferably freestanding or extendable rather than placed on obstructing furniture.
+- This completed task clears the live-feasibility gate. Production live capture still requires a deliberate shared live-pose abstraction and `TrainerApp` device verification.
 
 ### M1.12 Engine Selection Write-Up
 
@@ -719,6 +725,6 @@ Result:
 
 - Selected MediaPipe Pose Landmarker for the Milestone 2 implementation direction.
 - Kept Apple Vision as a baseline comparator rather than a second production path.
-- Documented the evidence, integration cost, unproven clean-rep gates, limited labeled dataset, missing physical-device metrics, and mitigation plan at `docs/bakeoff_results/2026-07-09_engine_selection.md`.
+- Documented the evidence, integration cost, unproven clean-rep gates, limited labeled dataset, and mitigation plan at `docs/bakeoff_results/2026-07-09_engine_selection.md`; the write-up now includes the later M1.11 device result.
 - The selection is an architecture decision, not a claim that production accuracy or live feasibility is already certified.
-- M1.11 remains blocked on the physical-device protocol and must pass before `TrainerApp` production live-capture work.
+- M1.11 now passes the physical-device protocol. `TrainerApp` production live-capture work is no longer gated by device feasibility, but still requires a deliberate shared live-pose abstraction.

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -77,7 +77,6 @@
 				F59C64CB3B203CE0598CCFDC /* Pods-PoseBakeoff.debug.xcconfig */,
 				21B9AEE022E4141CE2FF8799 /* Pods-PoseBakeoff.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -223,11 +222,10 @@
 			mainGroup = A40000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				A70000000000000000000003 /* XCLocalSwiftPackageReference "PoseCore" */,
-				A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */,
-				A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */,
+				A70000000000000000000003 /* XCLocalSwiftPackageReference "Packages/PoseCore" */,
+				A70000000000000000000004 /* XCLocalSwiftPackageReference "Packages/SquatAnalysis" */,
+				A70000000000000000000005 /* XCLocalSwiftPackageReference "Packages/TrainerCore" */,
 			);
-			preferredProjectObjectVersion = 77;
 			productRefGroup = A40000000000000000000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -418,7 +416,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 6WK3T4C6FV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PoseBakeoff uses the camera to measure live pose tracking viability.";
@@ -445,7 +443,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 6WK3T4C6FV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PoseBakeoff uses the camera to measure live pose tracking viability.";
@@ -548,15 +546,15 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A70000000000000000000003 /* XCLocalSwiftPackageReference "PoseCore" */ = {
+		A70000000000000000000003 /* XCLocalSwiftPackageReference "Packages/PoseCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PoseCore;
 		};
-		A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */ = {
+		A70000000000000000000004 /* XCLocalSwiftPackageReference "Packages/SquatAnalysis" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/SquatAnalysis;
 		};
-		A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */ = {
+		A70000000000000000000005 /* XCLocalSwiftPackageReference "Packages/TrainerCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/TrainerCore;
 		};
@@ -565,17 +563,17 @@
 /* Begin XCSwiftPackageProductDependency section */
 		A70000000000000000000001 /* PoseCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A70000000000000000000003 /* XCLocalSwiftPackageReference "PoseCore" */;
+			package = A70000000000000000000003 /* XCLocalSwiftPackageReference "Packages/PoseCore" */;
 			productName = PoseCore;
 		};
 		A70000000000000000000002 /* SquatAnalysis */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */;
+			package = A70000000000000000000004 /* XCLocalSwiftPackageReference "Packages/SquatAnalysis" */;
 			productName = SquatAnalysis;
 		};
 		A70000000000000000000006 /* TrainerCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */;
+			package = A70000000000000000000005 /* XCLocalSwiftPackageReference "Packages/TrainerCore" */;
 			productName = TrainerCore;
 		};
 /* End XCSwiftPackageProductDependency section */

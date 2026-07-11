@@ -1,6 +1,6 @@
 # Native Rebuild Product Spec
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Product Vision
 
@@ -288,7 +288,7 @@ Use SwiftUI for app shell and simple screens. Use AVFoundation, Vision, and othe
 
 MediaPipe Pose Landmarker is the selected implementation direction for the back-squat vertical slice. Apple Vision remains a bakeoff baseline, not a parallel production requirement.
 
-The selection is based on stronger prerecorded lower-body continuity and the first labeled offline score from a native MediaPipe pose export. It does not certify clean-rep gates or physical-device real-time performance. M1.11 live camera viability remains a required device gate before production `TrainerApp` live capture. See `docs/bakeoff_results/2026-07-09_engine_selection.md`.
+The selection is based on stronger prerecorded lower-body continuity and the first labeled offline score from a native MediaPipe pose export. M1.11 subsequently passed portrait physical-device live viability on separate standing and side-view bodyweight-squat artifacts. This does not certify clean-rep gates or production tracking accuracy. See `docs/bakeoff_results/2026-07-09_engine_selection.md` and `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 
 Keep engine-native MediaPipe types behind an app-owned adapter. The current shared `PoseEstimator` protocol covers prerecorded URLs only; production live streaming needs a deliberate shared abstraction rather than copying the `PoseBakeoff` camera harness into the UI.
 

@@ -27,7 +27,7 @@ struct TrainingLoadTests {
 
         #expect(session.currentSet.load == nil)
         #expect(throws: QuickSessionError.missingLoad) {
-            try session.completeCurrentSet()
+            try session.advanceCurrentSetForCameraIndependentTesting()
         }
         #expect(session.completedSets.isEmpty)
         #expect(session.currentSet.ordinal == 1)
@@ -41,7 +41,7 @@ struct TrainingLoadTests {
         let secondLoad = try TrainingLoad(value: 195, unit: .pounds)
 
         try session.setCurrentSetLoad(firstLoad)
-        try session.completeCurrentSet(nextSetID: secondSetID)
+        try session.advanceCurrentSetForCameraIndependentTesting(nextSetID: secondSetID)
 
         #expect(session.completedSets[0].load == firstLoad)
         #expect(session.currentSet.load == firstLoad)
@@ -57,7 +57,7 @@ struct TrainingLoadTests {
         let load = try TrainingLoad(value: 100.5, unit: .kilograms)
 
         try session.setCurrentSetLoad(load)
-        let completed = try session.completeCurrentSet()
+        let completed = try session.advanceCurrentSetForCameraIndependentTesting()
 
         #expect(completed.load == load)
         #expect(session.currentSet.load == load)

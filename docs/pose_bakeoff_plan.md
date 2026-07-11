@@ -1,6 +1,6 @@
 # Pose Bakeoff Plan
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Purpose
 
@@ -32,7 +32,7 @@ MediaPipe Pose Landmarker is selected as the Milestone 2 implementation directio
 
 The full rationale is recorded in `docs/bakeoff_results/2026-07-09_engine_selection.md`. MediaPipe has the strongest current lower-body continuity and the only labeled score from a native MediaPipe pose export: the Python M1 scorer reported 7 expected, 7 predicted, 0 missed, and 0 phantom on one clean side-view barbell clip. Apple Vision remains in `PoseBakeoff` as a baseline comparator.
 
-This is a conditional implementation decision, not final accuracy certification. The evidence set is still small, clean-rep gates have not been validated, and M1.11 physical-iPhone live viability remains blocked on a hands-on run. Camera-independent Milestone 2 work may proceed; production live capture may not claim viability until that device gate passes.
+This is a conditional implementation decision, not final accuracy certification. The evidence set is still small and clean-rep gates have not been validated. M1.11 physical-iPhone portrait live viability now passes on separate standing and side-view bodyweight-squat artifacts. This clears the feasibility gate but does not replace production analysis validation or the need for a shared live-pose abstraction.
 
 For M1.11, the originally stated 24 FPS and 75ms targets now serve as first-pass live viability thresholds for the selected MediaPipe engine as well, not only as the condition under which Apple Vision would have won on convenience. The complete MediaPipe pass/fail criteria and fallback path are in `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 

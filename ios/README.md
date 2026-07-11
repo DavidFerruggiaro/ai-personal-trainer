@@ -78,8 +78,8 @@ Current verification:
 Current milestone boundary:
 
 1. MediaPipe is selected for the Milestone 2 implementation direction; see `../docs/bakeoff_results/2026-07-09_engine_selection.md`.
-2. M1.11 remains blocked on the documented hands-on physical-iPhone run. Complete that protocol before production live capture work.
-3. Camera-independent M2.1 through M2.4 are complete: shell, session lifecycle, supported catalog, and load entry/defaulting. The next safe software step is M2.5 setup-gate state/UI without live-camera claims.
+2. M1.11 passes the documented portrait physical-iPhone protocol. Production live capture still requires a shared live-pose abstraction rather than copying the bakeoff harness into `TrainerApp`.
+3. Camera-independent M2.1 through M2.4 are complete, and the M2.5 setup-gate state/UI seam is implemented without live-camera claims. M2.5 remains in progress until a live signal source and `TrainerApp` device verification exist.
 4. Keep using `SquatTrainer.xcworkspace` for `PoseBakeoff`. `TrainerApp` still builds from the project until its eventual MediaPipe production adapter is deliberately wired.
 5. Do not use the rough bakeoff hip-dip detector as the production rep counter; `SquatAnalyzer` still needs a tested counted-vs-clean redesign.
 

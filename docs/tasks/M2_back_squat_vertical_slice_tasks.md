@@ -91,7 +91,7 @@ Result:
 - `TrainerApp` already links `PoseCore` and `SquatAnalysis`; its UI exposes no engine-native types.
 - `SquatAnalyzer` remains the owner of future rep/form logic, but its current production API is only a placeholder. The M1 bakeoff detector must not be presented as production analysis.
 - The current live-camera harness is `PoseBakeoff`-specific and bypasses the prerecorded-only estimator protocol. A production live-pose abstraction remains a focused prerequisite for later setup/capture tickets, not M2.1 shell scope.
-- M1.11 physical-device viability is still blocked and remains a go/no-go gate before camera-backed setup checks, production capture, or real-time tracking in `TrainerApp`.
+- M1.11 physical-device viability now passes for portrait MediaPipe capture. Camera-backed setup checks and production capture are no longer blocked by feasibility, but still require a deliberate shared live-pose abstraction.
 - On 2026-07-09 both shared package test suites and both app build checks passed.
 
 ### M2.1 Create TrainerApp Shell
@@ -188,7 +188,7 @@ Result:
 - Added stable exercise IDs, `SetDraft`, `CompletedSetSummary`, and an in-memory `QuickSession` lifecycle with explicit start, ordered set completion, next-set creation, and end behavior.
 - Session mutations after end are rejected. The model intentionally contains no persistence, camera, pose, rep analysis, history, or production `SetResult` claims.
 - `BackSquatQuickSessionView` now owns a local session, shows the current set and completed-set count, can advance multiple sets in memory, and marks the session ended before dismissing.
-- The temporary `Complete Set` control explicitly says that it neither analyzes nor saves the set; later capture/review tickets will replace this camera-independent seam.
+- The temporary completion control explicitly says that it neither analyzes nor saves the set; M2.5 later renamed it `Advance Test Set` and separated it from setup-required production completion.
 - `TrainerCore` has three deterministic lifecycle tests covering start state, two ordered set completions, next-set advancement, end state, and rejection of post-end mutation.
 - On 2026-07-10, `TrainerCore`, `PoseCore`, and `SquatAnalysis` tests passed; `TrainerApp` and `PoseBakeoff` Simulator builds passed; `TrainerApp` installed, launched, and rendered its root screen on an iPhone 16 / iOS 18.6 simulator.
 - The local computer-use runtime still failed to start, so the destination buttons were not mechanically tapped in Simulator. Model transitions are unit-tested and the destination compiles, but this is not recorded as a manual interaction run.
@@ -286,14 +286,14 @@ Result:
 - `SetDraft` now carries optional load, and a set cannot move into `CompletedSetSummary` until a valid load is attached. Completed summaries carry a required load.
 - Completing a set copies the exact value and unit into the next set draft. Editing the next draft replaces only that draft and does not mutate the prior completed summary.
 - Added a pre-set load field and `lb`/`kg` segmented control to the quick-session screen. After a set advances, the carried value/unit remain visible and editable for the next set.
-- The current camera-independent seam validates and commits the UI entry immediately before `Complete Set`. M2.5 must commit/validate the load before entering setup/start-set state so capture can never begin with an unloaded draft.
+- The M2.4 camera-independent seam validates and commits UI entry immediately before advancing. M2.5 now enforces load-before-setup in the domain and requires a setup outcome for normal completion; the visible bypass is explicitly test-only.
 - Added five focused load tests and extended lifecycle coverage. The full `TrainerCore` suite passes with 12 tests, including missing/invalid load, explicit zero, pounds default, exact pound carry-forward with immutable prior data, and kilogram carry-forward without conversion.
 - `TrainerApp` passed the generic iOS Simulator build on 2026-07-10. Mechanical multi-set weight entry was not tapped because the local computer-use runtime remains unavailable; the carry/edit behavior is verified at the domain layer, not claimed as a manual UI run.
 - This remains transient session state. It is not SwiftData/history and is not the later canonical persisted `SetResult`.
 
 ### M2.5 Implement Setup Gate UI State
 
-Status: pending
+Status: in_progress
 
 Goal:
 
@@ -334,6 +334,18 @@ Files likely touched:
 Documentation updates:
 
 - Record exact user-facing setup messages.
+
+Camera-independent progress (2026-07-10):
+
+- Added typed state for the four locked checks: `full_body_visible`, `side_view_likely`, `phone_stable`, and `pose_confidence_ok`; each is `pending`, `passing`, or `failing`.
+- Pending checks cannot be approved or overridden. Fully passing checks produce a `passed` gate disposition without inventing the later high/medium/low capture label. Evaluated failures can be overridden, and that outcome explicitly requires a low-confidence label with the failed check IDs preserved.
+- A setup outcome can be attached to the current set only after load exists. The completed summary preserves it, while the next set keeps the prior load but resets setup to `nil` so the gate must run again.
+- Normal `QuickSession.completeCurrentSet()` now requires a setup outcome. `TrainerApp` uses the conspicuously named `advanceCurrentSetForCameraIndependentTesting()` seam while live checks are unavailable, and its `Advance Test Set` copy explicitly says the pending gate is bypassed.
+- `TrainerApp` renders all four checks as pending with explicit copy that live checks are not connected and no check is being treated as passed.
+- Exact pending instructions are: `Keep your head, hips, knees, and feet in frame.`, `Stand side-on so the camera can see squat depth.`, `Place the phone on a stable surface.`, and `Use clear lighting and keep your body unobstructed.`
+- Exact failure fixes are: `Move the phone back until your full body stays in frame.`, `Turn so your shoulder and hip line are side-on to the camera.`, `Set the phone down securely; do not hand-hold it.`, and `Improve the lighting and clear obstructions around your body.`
+- Four setup-gate tests bring `TrainerCore` to 16 passing tests. `TrainerApp` passes the generic iOS Simulator build.
+- M2.5 remains `in_progress`. A live signal source, interactive pass/fail/override flow, and `TrainerApp` real-device verification are intentionally not claimed; the remaining engineering dependency is the production live-pose abstraction.
 
 ### M2.6 Add Start Set Countdown
 

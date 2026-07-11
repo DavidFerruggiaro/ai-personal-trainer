@@ -80,6 +80,7 @@ private struct BackSquatQuickSessionView: View {
     @State private var loadUnit: LoadUnit
     @State private var loadEntryError: String?
     private let exercise: ExerciseDefinition
+    private let setupGateAssessment = SetupGateAssessment.pending
 
     init(exercise: ExerciseDefinition) {
         self.exercise = exercise
@@ -173,8 +174,28 @@ private struct BackSquatQuickSessionView: View {
                 .padding(16)
                 .background(.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
 
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Camera Setup Gate")
+                            .font(.headline)
+                        Text("Runs before every set")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(setupGateAssessment.checks) { check in
+                        SetupCheckRow(check: check)
+                    }
+
+                    Text("Live checks are not connected in TrainerApp yet, so none are treated as passed. A future failed-check override will force the capture label to Low confidence.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .background(.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
+
                 VStack(alignment: .leading, spacing: 10) {
-                    Button("Complete Set") {
+                    Button("Advance Test Set") {
                         completeCurrentSet()
                     }
                     .buttonStyle(.borderedProminent)
@@ -182,7 +203,7 @@ private struct BackSquatQuickSessionView: View {
                     .frame(maxWidth: .infinity)
                     .disabled(loadText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                    Text("This camera-independent step advances only the in-memory session. It does not analyze or save the set yet.")
+                    Text("This camera-independent step advances only the in-memory session. It does not run the pending setup gate, analyze, or save the set yet.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -208,13 +229,13 @@ private struct BackSquatQuickSessionView: View {
         do {
             let load = try TrainingLoad(value: value, unit: loadUnit)
             try session.setCurrentSetLoad(load)
-            try session.completeCurrentSet()
+            try session.advanceCurrentSetForCameraIndependentTesting()
             syncLoadEntryFromCurrentSet()
             loadEntryError = nil
         } catch TrainingLoadError.invalidValue {
             loadEntryError = "Load must be zero or greater."
         } catch {
-            assertionFailure("A loaded, active quick session should accept a completed set: \(error)")
+            assertionFailure("A loaded, active quick session should accept a test-set advance: \(error)")
         }
     }
 
@@ -236,6 +257,62 @@ private struct BackSquatQuickSessionView: View {
             dismiss()
         } catch {
             assertionFailure("An active quick session should end once: \(error)")
+        }
+    }
+}
+
+private struct SetupCheckRow: View {
+    let check: SetupCheck
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: iconName)
+                .foregroundStyle(iconColor)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(check.id.displayName)
+                    .font(.subheadline.weight(.semibold))
+
+                Text(detailText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var iconName: String {
+        switch check.status {
+        case .pending:
+            "circle.dotted"
+        case .passing:
+            "checkmark.circle.fill"
+        case .failing:
+            "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var iconColor: Color {
+        switch check.status {
+        case .pending:
+            .secondary
+        case .passing:
+            .green
+        case .failing:
+            .orange
+        }
+    }
+
+    private var detailText: String {
+        switch check.status {
+        case .pending:
+            check.id.setupInstruction
+        case .passing:
+            "Ready"
+        case .failing:
+            check.id.failureFix
         }
     }
 }

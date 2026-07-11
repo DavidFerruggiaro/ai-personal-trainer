@@ -185,10 +185,16 @@ Current M1 state:
 - M1.12 is complete: MediaPipe Pose Landmarker is selected for Milestone 2 implementation. Apple Vision remains in `PoseBakeoff` as a baseline comparator. The evidence and caveats are documented at `docs/bakeoff_results/2026-07-09_engine_selection.md`.
 - The selection is an architecture direction, not a production-accuracy certification. Only one clean barbell clip is labeled; clean-rep gates and the 150ms timing target remain unproven.
 - M1.11 live camera implementation exists: `PoseBakeoff` configures the rear camera for 30 FPS, runs MediaPipe on every delivered sample buffer, and displays/exports processed FPS, capture-output drops, failures, average/median/latest latency, and confidence metrics. Reset is disabled during capture to preserve monotonic MediaPipe video timestamps.
-- M1.11 is blocked pending a hands-on physical-iPhone run. A connected iPhone destination was visible to Xcode on 2026-07-09, but the unattended session could not perform camera placement, squat motion, visual overlay inspection, heat, or battery checks.
+- M1.11 is complete on a physical iPhone 16 Pro Max running iOS 26.5. The systematic live-overlay displacement was traced to preview and analysis using different rotation paths. The fixed harness rotates both capture connections to portrait and passes the already-portrait sample buffer to MediaPipe as `.up`; a five-second physical retest visibly aligned and tracked the tester.
+- The replacement standing artifact passes at 29.90 FPS, 10.87 ms median latency, 95.35% pose presence, zero failed frames, and zero capture-output drops. Early frames include phone-positioning noise; the later qualifying squat run completed the remaining environment/runtime observations.
+- An earlier squat attempt passed numeric throughput at 29.93 FPS, 10.62 ms median latency, 95.81% pose presence, zero failures, and zero capture drops, but was rejected because a desk blocked the tester's ankles and limited space caused wall contact. That failure motivated the later clear-space qualifying artifact.
+- Add a compact, stable, adjustable phone tripod/stand to the test-equipment purchase list. It should be freestanding or extendable enough to keep furniture out of the camera-to-lifter path; a mini tripod placed on the obstructing desk is insufficient.
+- Manual environment note: testing occurred at night with one desk lamp; lighting was described as not great but adequate. The iPhone was tethered to and charging from the Mac mini, so battery change is not interpretable. The qualifying run was approximately 5-6 ft from the camera, device heat remained normal, and there were no stalls, crashes, or permission issues.
+- The qualifying squat artifact cleared numeric gates at 25.52 FPS, 10.57 ms median latency, 90.47% pose presence, zero inference failures, and five capture drops. It includes brief face-on setup frames followed by side-view bodyweight squats at approximately 5-6 ft; the tester reported head-through-feet visibility, normal phone heat, and no stall/crash/permission issue.
+- Far-side hip, knee, and ankle landmarks drifted or jumped mildly when self-occluded behind the near leg. The visible near-side joints remained usable, so the run satisfies the explicit stability criterion for visibly unoccluded joints. M1.11 validates portrait live feasibility, not clean-rep accuracy or landscape capture.
 - The device protocol and measurement limitations are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
-- Camera-independent Milestone 2 work may proceed. The physical-device artifact remains a go/no-go gate before camera-backed setup checks, production live capture, or real-time tracking; it does not block setup-gate UI/state modeling.
-- M2.0 through M2.4 are complete. `TrainerApp` derives its single supported Back Squat entry from the predefined catalog and starts an in-memory `QuickSession` with pounds-default load entry. It tracks current/completed sets, carries the prior value/unit into the next draft, and ends explicitly. It does not yet own setup-gate state, camera capture, persistence, or analysis.
+- The physical-device feasibility gate is cleared. Camera-backed Milestone 2 work may proceed after introducing a deliberate shared live-pose abstraction; do not copy the `PoseBakeoff` harness directly into `TrainerApp`.
+- M2.0 through M2.4 are complete. M2.5 now has a camera-independent setup-gate model/UI seam: four pending/pass/fail checks, concrete fixes, passed versus overridden dispositions, forced-low-confidence metadata only after override, and per-set reset semantics. `TrainerApp` still has no live setup signal source, camera capture, persistence, or production analysis.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -640,7 +646,7 @@ Use the Ryan-style repo-as-memory loop:
 2. Read this handoff.
 3. Read `docs/bakeoff_results/2026-07-09_engine_selection.md`.
 4. Read `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.
-5. Pick the next camera-independent M2 ticket only.
+5. Pick the next M2 ticket, preserving the production live-pose abstraction boundary.
 6. Verify with the listed build/test commands.
 7. Update docs and `docs/decision_log.md`.
 8. Stop or ask before expanding scope.
@@ -648,9 +654,9 @@ Use the Ryan-style repo-as-memory loop:
 Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
-2. M1.11 is blocked on the hands-on physical-device protocol and must pass before production live capture work.
-3. M2.1 through M2.4 are complete: the narrow quick-start shell owns tested in-memory session, supported-catalog, and exact load/defaulting behavior.
-4. The next safe software ticket is the camera-independent portion of M2.5: model and render the four-state setup gate plus override/low-confidence semantics without pretending that real camera checks exist. Camera-backed checks remain blocked on M1.11.
+2. M1.11 is complete: separate standing and squat artifacts pass the portrait physical-device viability protocol.
+3. M2.1 through M2.4 are complete. The camera-independent M2.5 seam is implemented and tested, while M2.5 remains in progress pending a live signal source and physical verification.
+4. Camera-backed setup/capture is no longer blocked by M1.11, but it still requires a deliberate shared live-pose abstraction. M2.6 countdown modeling remains a safe independent option.
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
 6. The later analyzer port must intentionally separate counted reps from clean reps; the Python state machine is reference logic, not a literal Swift specification.
 
@@ -916,6 +922,8 @@ Acceptance criteria:
 ## Open Design Questions
 
 These are good next grill-me branches:
+
+- Development environment: the attached `G-DRIVE mobile USB` is a 1 TB HFS+ hard drive with roughly 190 GiB free as of 2026-07-10. Use it for captured-video/dataset archives, not Xcode DerivedData. Plan an external SSD before archive volume grows.
 
 - What is the minimum viable post-set review screen layout?
 - What are the exact setup-gate user messages?

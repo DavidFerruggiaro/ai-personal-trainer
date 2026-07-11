@@ -6,3 +6,8 @@ target 'PoseBakeoff' do
   use_frameworks!
   pod 'MediaPipeTasksVision'
 end
+
+target 'TrainerApp' do
+  use_frameworks!
+  pod 'MediaPipeTasksVision'
+end

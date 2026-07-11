@@ -39,7 +39,7 @@ Important locked decisions:
 - Rebuild starts fresh under `ios/`.
 - V1 focuses on side-view barbell back squat.
 - Pose engine choice comes from a bakeoff between Apple Vision and MediaPipe.
-- MediaPipe is the current working engine direction based on smoke tests; Apple Vision remains a baseline comparator until formal labeled scoring is complete.
+- MediaPipe Pose Landmarker is selected for Milestone 2; Apple Vision remains a baseline comparator, not an open parallel production path.
 - Tracking quality beats SDK convenience.
 - V1 uses quick-start sessions only.
 - V1 is local-first with no required account/cloud/backend.

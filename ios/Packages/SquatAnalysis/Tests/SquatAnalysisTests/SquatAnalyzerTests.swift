@@ -5,16 +5,119 @@ import PoseCore
 final class SquatAnalyzerTests: XCTestCase {
     func testAnalyzerFiltersLowConfidenceFrames() {
         let analyzer = SquatAnalyzer(
-            configuration: SquatAnalysisConfiguration(minimumFrameConfidence: 0.5)
+            configuration: SquatAnalysisConfiguration(
+                minimumFrameConfidence: 0.5,
+                standingCalibrationDurationSeconds: 0.1,
+                minimumStandingCalibrationSamples: 2,
+                smoothingFactor: 1
+            )
         )
 
         let result = analyzer.analyze(frames: [
-            PoseFrame(timestampSeconds: 0, landmarks: [], frameConfidence: 0.9),
-            PoseFrame(timestampSeconds: 1, landmarks: [], frameConfidence: 0.2),
-            PoseFrame(timestampSeconds: 2, landmarks: [], frameConfidence: nil)
+            makeLegFrame(timestamp: 0, kneeAngle: 170, hipY: 0.34, frameConfidence: 0.9),
+            makeLegFrame(timestamp: 1, kneeAngle: 170, hipY: 0.34, frameConfidence: 0.2),
+            makeLegFrame(timestamp: 2, kneeAngle: 170, hipY: 0.34, frameConfidence: nil)
         ])
 
+        XCTAssertEqual(result.framesObserved, 3)
         XCTAssertEqual(result.framesAnalyzed, 2)
+    }
+
+    func testStreamingAnalyzerCountsCompletedCycleWithoutDeclaringItClean() throws {
+        var analyzer = SquatAnalyzer(configuration: streamingConfiguration)
+        var updates: [SquatAnalyzerUpdate] = []
+
+        for frame in countedRepFrames {
+            updates.append(analyzer.observe(frame: frame))
+        }
+
+        XCTAssertEqual(analyzer.result.countedReps, 1)
+        XCTAssertNil(analyzer.result.cleanReps)
+        let rep = try XCTUnwrap(analyzer.result.reps.first)
+        XCTAssertTrue(rep.counted)
+        XCTAssertNil(rep.cleanAssessment.clean)
+        XCTAssertEqual(rep.cleanAssessment.depth, .notAssessed)
+        XCTAssertEqual(rep.cleanAssessment.lockout, .notAssessed)
+        XCTAssertEqual(rep.cleanAssessment.tempoControl, .notAssessed)
+        XCTAssertEqual(updates.filter { $0.completedRep != nil }.count, 1)
+        XCTAssertEqual(updates.last?.provisionalCountedReps, 1)
+    }
+
+    func testBatchAndStreamingAnalysisProduceTheSameCount() {
+        let batch = SquatAnalyzer(configuration: streamingConfiguration)
+            .analyze(frames: countedRepFrames)
+        var streaming = SquatAnalyzer(configuration: streamingConfiguration)
+        countedRepFrames.forEach { streaming.observe(frame: $0) }
+
+        XCTAssertEqual(batch, streaming.result)
+        XCTAssertEqual(batch.countedReps, 1)
+    }
+
+    func testSmallKneeDipDoesNotCountAsRep() {
+        var analyzer = SquatAnalyzer(configuration: streamingConfiguration)
+        let frames = standingFrames + [
+            makeLegFrame(timestamp: 0.3, kneeAngle: 158, hipY: 0.355),
+            makeLegFrame(timestamp: 0.4, kneeAngle: 150, hipY: 0.38),
+            makeLegFrame(timestamp: 0.5, kneeAngle: 160, hipY: 0.35),
+            makeLegFrame(timestamp: 0.6, kneeAngle: 170, hipY: 0.34)
+        ]
+
+        frames.forEach { analyzer.observe(frame: $0) }
+
+        XCTAssertEqual(analyzer.result.countedReps, 0)
+    }
+
+    func testKneeFlexionWithoutHipDescentDoesNotStartRep() {
+        var analyzer = SquatAnalyzer(configuration: streamingConfiguration)
+        let frames = standingFrames + [
+            makeLegFrame(timestamp: 0.3, kneeAngle: 150, hipY: 0.34),
+            makeLegFrame(timestamp: 0.4, kneeAngle: 120, hipY: 0.34),
+            makeLegFrame(timestamp: 0.5, kneeAngle: 135, hipY: 0.34),
+            makeLegFrame(timestamp: 0.6, kneeAngle: 160, hipY: 0.34),
+            makeLegFrame(timestamp: 0.7, kneeAngle: 170, hipY: 0.34)
+        ]
+
+        frames.forEach { analyzer.observe(frame: $0) }
+
+        XCTAssertEqual(analyzer.result.countedReps, 0)
+    }
+
+    func testLongEvidenceGapCancelsInProgressCandidate() {
+        var analyzer = SquatAnalyzer(configuration: streamingConfiguration)
+        let frames = standingFrames + [
+            makeLegFrame(timestamp: 0.3, kneeAngle: 155, hipY: 0.36),
+            makeLegFrame(timestamp: 0.4, kneeAngle: 125, hipY: 0.44),
+            makeLegFrame(timestamp: 1.0, kneeAngle: 125, hipY: 0.44, confidence: 0.1),
+            makeLegFrame(timestamp: 1.1, kneeAngle: 145, hipY: 0.39),
+            makeLegFrame(timestamp: 1.2, kneeAngle: 165, hipY: 0.35)
+        ]
+
+        let updates = frames.map { analyzer.observe(frame: $0) }
+
+        XCTAssertEqual(analyzer.result.countedReps, 0)
+        XCTAssertTrue(updates.contains { $0.phase == .trackingLost })
+    }
+
+    func testCleanAssessmentRequiresAllRequiredGates() {
+        XCTAssertEqual(
+            SquatCleanRepAssessment(depth: .passed, lockout: .passed, tempoControl: .passed).clean,
+            true
+        )
+        XCTAssertEqual(
+            SquatCleanRepAssessment(
+                depth: .failed,
+                lockout: .insufficientEvidence,
+                tempoControl: .passed
+            ).clean,
+            false
+        )
+        XCTAssertNil(
+            SquatCleanRepAssessment(
+                depth: .passed,
+                lockout: .insufficientEvidence,
+                tempoControl: .passed
+            ).clean
+        )
     }
 
     func testManualLabelJSONDecodesSnakeCaseFields() throws {
@@ -122,6 +225,72 @@ final class SquatAnalyzerTests: XCTestCase {
                 PoseLandmark(name: .midHip, x: 0.5, y: hipY, confidence: 0.9)
             ],
             frameConfidence: 0.9
+        )
+    }
+
+    private var streamingConfiguration: SquatAnalysisConfiguration {
+        SquatAnalysisConfiguration(
+            minimumFrameConfidence: 0.5,
+            minimumLandmarkConfidence: 0.5,
+            minimumStandingKneeAngleDegrees: 145,
+            standingCalibrationDurationSeconds: 0.2,
+            minimumStandingCalibrationSamples: 3,
+            descentStartKneeFlexionDegrees: 10,
+            descentStartHipRatio: 0.02,
+            minimumCountedKneeFlexionDegrees: 30,
+            minimumCountedHipDescentRatio: 0.08,
+            ascentReversalDegrees: 5,
+            standingReturnToleranceDegrees: 15,
+            standingHipReturnToleranceRatio: 0.06,
+            minimumRepDurationSeconds: 0.5,
+            maximumRepDurationSeconds: 4,
+            maximumEvidenceGapSeconds: 0.5,
+            smoothingFactor: 1
+        )
+    }
+
+    private var standingFrames: [PoseFrame] {
+        [
+            makeLegFrame(timestamp: 0.0, kneeAngle: 170, hipY: 0.34),
+            makeLegFrame(timestamp: 0.1, kneeAngle: 170, hipY: 0.34),
+            makeLegFrame(timestamp: 0.2, kneeAngle: 170, hipY: 0.34)
+        ]
+    }
+
+    private var countedRepFrames: [PoseFrame] {
+        standingFrames + [
+            makeLegFrame(timestamp: 0.3, kneeAngle: 157, hipY: 0.355),
+            makeLegFrame(timestamp: 0.4, kneeAngle: 145, hipY: 0.38),
+            makeLegFrame(timestamp: 0.5, kneeAngle: 125, hipY: 0.43),
+            makeLegFrame(timestamp: 0.6, kneeAngle: 120, hipY: 0.45),
+            makeLegFrame(timestamp: 0.7, kneeAngle: 130, hipY: 0.43),
+            makeLegFrame(timestamp: 0.8, kneeAngle: 145, hipY: 0.39),
+            makeLegFrame(timestamp: 0.9, kneeAngle: 158, hipY: 0.36)
+        ]
+    }
+
+    private func makeLegFrame(
+        timestamp: Double,
+        kneeAngle: Double,
+        hipY: Double,
+        confidence: Double = 0.9,
+        frameConfidence: Double? = 0.9
+    ) -> PoseFrame {
+        let kneeX = 0.5
+        let kneeY = 0.62
+        let shinLength = 0.24
+        let radians = kneeAngle * .pi / 180
+        let ankleX = kneeX + sin(radians) * shinLength
+        let ankleY = kneeY - cos(radians) * shinLength
+
+        return PoseFrame(
+            timestampSeconds: timestamp,
+            landmarks: [
+                PoseLandmark(name: .leftHip, x: kneeX, y: hipY, confidence: confidence),
+                PoseLandmark(name: .leftKnee, x: kneeX, y: kneeY, confidence: confidence),
+                PoseLandmark(name: .leftAnkle, x: ankleX, y: ankleY, confidence: confidence)
+            ],
+            frameConfidence: frameConfidence
         )
     }
 }

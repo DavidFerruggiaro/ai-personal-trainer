@@ -87,3 +87,7 @@ That cost is acceptable because tracking quality is the deciding criterion and M
 M1.12 is complete: MediaPipe is the selected implementation direction and Milestone 2 no longer needs to reopen the engine debate.
 
 M1.11 now passes the portrait physical-device protocol. Camera-backed M2 work is no longer blocked by live feasibility, but production setup checks, capture, and real-time tracking still require a deliberate shared live-pose abstraction and `TrainerApp` device verification.
+
+## Implementation Follow-Up (2026-07-11)
+
+The shared live-pose dependency described above is now implemented as `PoseCore.LivePoseStreaming` / `LivePoseEvent`, with `TrainerLivePoseCamera` as the production MediaPipe adapter. The separate production `SquatAnalyzer` is also wired into `TrainerApp`; the rough M1 hip-dip detector remains bakeoff-only. These changes resolve the architecture prerequisites, not the remaining clean-gate evidence or broader physical-validation gaps.

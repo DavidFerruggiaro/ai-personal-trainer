@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		399CEBCE10CD125E3DB8EEA9 /* Pods_TrainerApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6BCE8C9E26850117DDDF5592 /* Pods_TrainerApp.framework */; };
 		45E6073F539D710DF355B579 /* Pods_PoseBakeoff.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B72F0E373AE31F9EDDDD1096 /* Pods_PoseBakeoff.framework */; };
 		A10000000000000000000001 /* PoseBakeoffApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* PoseBakeoffApp.swift */; };
 		A10000000000000000000002 /* PoseBakeoffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* PoseBakeoffView.swift */; };
@@ -21,10 +22,18 @@
 		A1000000000000000000000B /* pose_landmarker_full.task in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* pose_landmarker_full.task */; };
 		A1000000000000000000000C /* LiveCameraViabilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* LiveCameraViabilityView.swift */; };
 		A1000000000000000000000D /* TrainerCore in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000006 /* TrainerCore */; };
+		A1000000000000000000000E /* MediaPipePoseMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MediaPipePoseMapper.swift */; };
+		A1000000000000000000000F /* MediaPipePoseMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* MediaPipePoseMapper.swift */; };
+		A10000000000000000000010 /* TrainerLivePoseCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* TrainerLivePoseCamera.swift */; };
+		A10000000000000000000011 /* TrainerSetupGateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* TrainerSetupGateController.swift */; };
+		A10000000000000000000012 /* TrainerCameraPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000E /* TrainerCameraPreview.swift */; };
+		A10000000000000000000014 /* TrainerSessionCues.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* TrainerSessionCues.swift */; };
+		A10000000000000000000013 /* pose_landmarker_full.task in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* pose_landmarker_full.task */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		21B9AEE022E4141CE2FF8799 /* Pods-PoseBakeoff.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PoseBakeoff.release.xcconfig"; path = "Target Support Files/Pods-PoseBakeoff/Pods-PoseBakeoff.release.xcconfig"; sourceTree = "<group>"; };
+		6BCE8C9E26850117DDDF5592 /* Pods_TrainerApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TrainerApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000000000000000000001 /* PoseBakeoffApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseBakeoffApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* PoseBakeoffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseBakeoffView.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* TrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerApp.swift; sourceTree = "<group>"; };
@@ -35,7 +44,14 @@
 		A20000000000000000000008 /* MediaPipePoseEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPipePoseEstimator.swift; sourceTree = "<group>"; };
 		A20000000000000000000009 /* pose_landmarker_full.task */ = {isa = PBXFileReference; lastKnownFileType = file; path = pose_landmarker_full.task; sourceTree = "<group>"; };
 		A2000000000000000000000A /* LiveCameraViabilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCameraViabilityView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* MediaPipePoseMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPipePoseMapper.swift; sourceTree = "<group>"; };
+		A2000000000000000000000C /* TrainerLivePoseCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerLivePoseCamera.swift; sourceTree = "<group>"; };
+		A2000000000000000000000D /* TrainerSetupGateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSetupGateController.swift; sourceTree = "<group>"; };
+		A2000000000000000000000E /* TrainerCameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerCameraPreview.swift; sourceTree = "<group>"; };
+		A2000000000000000000000F /* TrainerSessionCues.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSessionCues.swift; sourceTree = "<group>"; };
 		B72F0E373AE31F9EDDDD1096 /* Pods_PoseBakeoff.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PoseBakeoff.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		BD41D60D6F97D74506EA8F41 /* Pods-TrainerApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrainerApp.release.xcconfig"; path = "Target Support Files/Pods-TrainerApp/Pods-TrainerApp.release.xcconfig"; sourceTree = "<group>"; };
+		BF49244B42B756384FC335CF /* Pods-TrainerApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrainerApp.debug.xcconfig"; path = "Target Support Files/Pods-TrainerApp/Pods-TrainerApp.debug.xcconfig"; sourceTree = "<group>"; };
 		F59C64CB3B203CE0598CCFDC /* Pods-PoseBakeoff.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PoseBakeoff.debug.xcconfig"; path = "Target Support Files/Pods-PoseBakeoff/Pods-PoseBakeoff.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -57,6 +73,7 @@
 				A10000000000000000000007 /* PoseCore in Frameworks */,
 				A10000000000000000000008 /* SquatAnalysis in Frameworks */,
 				A1000000000000000000000D /* TrainerCore in Frameworks */,
+				399CEBCE10CD125E3DB8EEA9 /* Pods_TrainerApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -67,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				B72F0E373AE31F9EDDDD1096 /* Pods_PoseBakeoff.framework */,
+				6BCE8C9E26850117DDDF5592 /* Pods_TrainerApp.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -76,6 +94,8 @@
 			children = (
 				F59C64CB3B203CE0598CCFDC /* Pods-PoseBakeoff.debug.xcconfig */,
 				21B9AEE022E4141CE2FF8799 /* Pods-PoseBakeoff.release.xcconfig */,
+				BF49244B42B756384FC335CF /* Pods-TrainerApp.debug.xcconfig */,
+				BD41D60D6F97D74506EA8F41 /* Pods-TrainerApp.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -85,6 +105,7 @@
 			children = (
 				A40000000000000000000002 /* PoseBakeoff */,
 				A40000000000000000000003 /* TrainerApp */,
+				A40000000000000000000008 /* Shared */,
 				A40000000000000000000004 /* Products */,
 				917E7C826DC51F180925EA2F /* Pods */,
 				3647DE1DF89AEB1B60277A55 /* Frameworks */,
@@ -134,6 +155,10 @@
 			children = (
 				A20000000000000000000003 /* TrainerApp.swift */,
 				A20000000000000000000004 /* TrainerRootView.swift */,
+				A2000000000000000000000C /* TrainerLivePoseCamera.swift */,
+				A2000000000000000000000D /* TrainerSetupGateController.swift */,
+				A2000000000000000000000E /* TrainerCameraPreview.swift */,
+				A2000000000000000000000F /* TrainerSessionCues.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -144,6 +169,22 @@
 				A20000000000000000000009 /* pose_landmarker_full.task */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000008 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A40000000000000000000009 /* Sources */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000009 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				A2000000000000000000000B /* MediaPipePoseMapper.swift */,
+			);
+			path = Sources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -175,6 +216,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A90000000000000000000004 /* Build configuration list for PBXNativeTarget "TrainerApp" */;
 			buildPhases = (
+				5CD642778E0F1D44B211FE78 /* [CP] Check Pods Manifest.lock */,
 				A60000000000000000000003 /* Sources */,
 				A30000000000000000000002 /* Frameworks */,
 				A60000000000000000000004 /* Resources */,
@@ -222,9 +264,9 @@
 			mainGroup = A40000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				A70000000000000000000003 /* XCLocalSwiftPackageReference "Packages/PoseCore" */,
-				A70000000000000000000004 /* XCLocalSwiftPackageReference "Packages/SquatAnalysis" */,
-				A70000000000000000000005 /* XCLocalSwiftPackageReference "Packages/TrainerCore" */,
+				A70000000000000000000003 /* XCLocalSwiftPackageReference "PoseCore" */,
+				A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */,
+				A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */,
 			);
 			productRefGroup = A40000000000000000000004 /* Products */;
 			projectDirPath = "";
@@ -249,6 +291,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000013 /* pose_landmarker_full.task in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -277,6 +320,28 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		5CD642778E0F1D44B211FE78 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-TrainerApp-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -289,6 +354,7 @@
 				A10000000000000000000009 /* AppleVisionPoseEstimator.swift in Sources */,
 				A1000000000000000000000A /* MediaPipePoseEstimator.swift in Sources */,
 				A1000000000000000000000C /* LiveCameraViabilityView.swift in Sources */,
+				A1000000000000000000000E /* MediaPipePoseMapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -298,6 +364,11 @@
 			files = (
 				A10000000000000000000003 /* TrainerApp.swift in Sources */,
 				A10000000000000000000004 /* TrainerRootView.swift in Sources */,
+				A1000000000000000000000F /* MediaPipePoseMapper.swift in Sources */,
+				A10000000000000000000010 /* TrainerLivePoseCamera.swift in Sources */,
+				A10000000000000000000011 /* TrainerSetupGateController.swift in Sources */,
+				A10000000000000000000012 /* TrainerCameraPreview.swift in Sources */,
+				A10000000000000000000014 /* TrainerSessionCues.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -465,17 +536,19 @@
 		};
 		A90000000000000000000009 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BF49244B42B756384FC335CF /* Pods-TrainerApp.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 6WK3T4C6FV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Squat Trainer uses the rear camera to check setup and analyze back squats.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aiPersonalTrainer.TrainerApp;
@@ -490,17 +563,19 @@
 		};
 		A9000000000000000000000A /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BD41D60D6F97D74506EA8F41 /* Pods-TrainerApp.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 6WK3T4C6FV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Squat Trainer uses the rear camera to check setup and analyze back squats.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aiPersonalTrainer.TrainerApp;
@@ -546,15 +621,15 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A70000000000000000000003 /* XCLocalSwiftPackageReference "Packages/PoseCore" */ = {
+		A70000000000000000000003 /* XCLocalSwiftPackageReference "PoseCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PoseCore;
 		};
-		A70000000000000000000004 /* XCLocalSwiftPackageReference "Packages/SquatAnalysis" */ = {
+		A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/SquatAnalysis;
 		};
-		A70000000000000000000005 /* XCLocalSwiftPackageReference "Packages/TrainerCore" */ = {
+		A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/TrainerCore;
 		};
@@ -563,17 +638,17 @@
 /* Begin XCSwiftPackageProductDependency section */
 		A70000000000000000000001 /* PoseCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A70000000000000000000003 /* XCLocalSwiftPackageReference "Packages/PoseCore" */;
+			package = A70000000000000000000003 /* XCLocalSwiftPackageReference "PoseCore" */;
 			productName = PoseCore;
 		};
 		A70000000000000000000002 /* SquatAnalysis */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A70000000000000000000004 /* XCLocalSwiftPackageReference "Packages/SquatAnalysis" */;
+			package = A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */;
 			productName = SquatAnalysis;
 		};
 		A70000000000000000000006 /* TrainerCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A70000000000000000000005 /* XCLocalSwiftPackageReference "Packages/TrainerCore" */;
+			package = A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */;
 			productName = TrainerCore;
 		};
 /* End XCSwiftPackageProductDependency section */

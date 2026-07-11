@@ -1,6 +1,6 @@
 # Native Rebuild Agent Handoff
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 ## Purpose
 
@@ -37,21 +37,19 @@ Native rebuild additions:
 - `docs/agent_build_system_plan.md`: plan for building the MVP-building system.
 - `docs/decision_log.md`: durable decision record.
 - `ios/`: native rebuild skeleton.
-- `ios/PoseBakeoff/`: starter source for internal pose-engine test app.
-- `ios/TrainerApp/`: user-facing app with the first narrow Back Squat quick-start shell.
-- `ios/Packages/PoseCore/`: local Swift package for normalized pose types, estimator protocol, JSON export shape.
-- `ios/Packages/SquatAnalysis/`: local Swift package for squat analysis, currently placeholder.
-- `ios/Packages/TrainerCore/`: Foundation-only app-domain package for quick-session, exercise-catalog, and load state; M2.2 lifecycle is implemented and tested.
-- `ios/SquatTrainer.xcodeproj`: Xcode project with `PoseBakeoff`, `TrainerApp`, `PoseCore`, and `SquatAnalysis` schemes.
-- `ios/SquatTrainer.xcworkspace`: CocoaPods workspace; use this for `PoseBakeoff` now that MediaPipe is integrated.
-- `ios/PoseBakeoff/Sources/AppleVisionPoseEstimator.swift`: first Apple Vision estimator implementation.
-- `ios/PoseBakeoff/Sources/MediaPipePoseEstimator.swift`: first native MediaPipe Pose Landmarker estimator implementation.
-- `ios/PoseBakeoff/Resources/pose_landmarker_full.task`: bundled MediaPipe full pose model.
+- `ios/PoseBakeoff/`: internal pose-engine test app.
+- `ios/TrainerApp/`: user-facing Back Squat quick-start app with live setup, arming, countdown, active capture, full-sequence finalization, review, correction, and discard.
+- `ios/Shared/Sources/MediaPipePoseMapper.swift`: shared MediaPipe → PoseCore landmark mapping used by both apps.
+- `ios/Packages/PoseCore/`: normalized pose types, estimator protocol, live-pose stream contracts, setup evidence extractor.
+- `ios/Packages/SquatAnalysis/`: squat analysis package; production streaming analyzer now emits conservative provisional counted reps while keeping clean-gate status explicitly unassessed.
+- `ios/Packages/TrainerCore/`: Foundation-only app-domain package: quick session, catalog, load, setup gate, signal window, start-set arming, countdown, active-set capture, finalized set summaries, ordered user corrections, and review-discard rollback.
+- `ios/SquatTrainer.xcodeproj` + `ios/SquatTrainer.xcworkspace`: always open the **workspace** (CocoaPods MediaPipe for both apps).
 
-Checkpoint:
+Git / working tree note (2026-07-11):
 
-- The previously uncommitted native rebuild, supporting docs, curated bakeoff artifacts, and scripts were checkpointed on branch `codex/native-rebuild-checkpoint` at commit `2472bd2` before further edits.
-- Unrelated untracked `.agents/` and `skills-lock.json` were intentionally left out of that checkpoint.
+- Branch: `codex/native-rebuild-checkpoint`.
+- The latest branch checkpoint includes the post-`9eaeae3` live-pose, TrainerApp camera/arming/countdown/capture, provisional counting, finalization/review/discard, M2.11 corrections, and documentation batch. Use `git log -1 --oneline` for the exact commit ID.
+- Unrelated `.agents/` and `skills-lock.json` are intentionally excluded from product commits.
 
 ## Environment State
 
@@ -68,7 +66,7 @@ Xcode 16.4
 Build version 16F6
 ```
 
-Package verification has passed for `PoseCore` and `SquatAnalysis`.
+Latest verification passes for `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (45 tests), and the `TrainerApp` workspace Simulator build after M2.11. A fresh signed `TrainerApp` 0.1 (build 1) from the earlier M2.9/M2.10/M2.12 working tree was built through `SquatTrainer.xcworkspace` and installed successfully on the connected iPhone 16 Pro Max at 2026-07-11 01:04 local time. `devicectl` confirmed bundle `com.aiPersonalTrainer.TrainerApp`; automated launch was denied only because the phone was locked. This verifies installation, not the new Stop/review/edit behavior, and the installed build predates M2.11.
 
 ## Locked Product Decisions
 
@@ -95,8 +93,8 @@ Do not reopen these unless the user explicitly asks.
 - Save local videos by default, with user control to delete video while keeping set results.
 - Accidental sets should be discarded, not saved as zero-rep sets.
 - V1 uses quick-start sessions only; no planned workout builder, calendar, templates, or programming layer.
-- V1 requires a deliberate `Start Set` action; setup passing should not auto-start recording.
-- After `Start Set`, v1 should include a short countdown before recording begins.
+- V1 requires a deliberate start action before recording; setup passing alone must not auto-start. The deliberate action is currently `Arm set` (locks load, then waits for setup while the phone is propped). Countdown begins only after arming and setup conditions are met. Wording/UI for this step is an open discussion item.
+- After arming + setup ready, v1 includes a short countdown before recording begins.
 - Countdown should transition automatically into recording if setup remains acceptable; do not require a second tap.
 
 ## Locked Architecture Decisions
@@ -193,8 +191,21 @@ Current M1 state:
 - The qualifying squat artifact cleared numeric gates at 25.52 FPS, 10.57 ms median latency, 90.47% pose presence, zero inference failures, and five capture drops. It includes brief face-on setup frames followed by side-view bodyweight squats at approximately 5-6 ft; the tester reported head-through-feet visibility, normal phone heat, and no stall/crash/permission issue.
 - Far-side hip, knee, and ankle landmarks drifted or jumped mildly when self-occluded behind the near leg. The visible near-side joints remained usable, so the run satisfies the explicit stability criterion for visibly unoccluded joints. M1.11 validates portrait live feasibility, not clean-rep accuracy or landscape capture.
 - The device protocol and measurement limitations are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
-- The physical-device feasibility gate is cleared. Camera-backed Milestone 2 work may proceed after introducing a deliberate shared live-pose abstraction; do not copy the `PoseBakeoff` harness directly into `TrainerApp`.
-- M2.0 through M2.4 are complete. M2.5 now has a camera-independent setup-gate model/UI seam: four pending/pass/fail checks, concrete fixes, passed versus overridden dispositions, forced-low-confidence metadata only after override, and per-set reset semantics. `TrainerApp` still has no live setup signal source, camera capture, persistence, or production analysis.
+- The physical-device feasibility gate is cleared. The deliberate shared live-pose abstraction is now implemented in `PoseCore`, and `TrainerApp` consumes it through its own adapter rather than copying the `PoseBakeoff` harness directly.
+- M2.0 through M2.4 are complete.
+- M2.5–M2.7 are substantially implemented in `TrainerApp` and have had a first successful physical arm→countdown→record loop (~920 live frames observed). That run predated the M2.8 analyzer connection, so its 0 provisional reps were expected.
+- Open before closing M2.5–M2.7: UX discussion on `Arm set` wording + post-arm UI; confirm Stop/Discard on device; optional override-path device check.
+- M2.8 live provisional counting is physically verified on one eight-rep set: all 8 completed reps counted, including one shallow rep; small test leg movements and walking back toward the phone produced no phantom reps. This validates the live integration and intended counted-vs-clean behavior for one run, not general accuracy.
+- The new detector calibrates standing, then requires confident one-leg evidence, knee flexion plus hip descent, ascent, and return near the standing reference. It does not use depth or absolute lockout as count gates. Clean depth/lockout/tempo states remain explicitly unassessed until later full-sequence analysis.
+- The rough M1 hip-dip detector remains bakeoff-only and is not wired into `TrainerApp`.
+- M2.9 now retains active-set pose frames in app memory, removes/stops the camera immediately on Stop, batch-finalizes from the full sequence off the main actor, maps analyzer output into `TrainerCore` summary types, and auto-saves the set in the in-memory session before review.
+- The fake 600ms processing delay and temporary stopped card are gone. Processing has retry/discard failure handling, and in-flight processing can be discarded if it hangs.
+- M2.10 now shows a compact load × canonical-count review, discloses provisional/final differences, labels setup overrides low-confidence, and keeps `Next Set` primary with discard/end secondary.
+- Clean status remains honestly unavailable because depth/lockout/tempo gates are still unassessed. The review explicitly says unavailable is not `0 clean reps`; no missing evidence defaults to clean.
+- The adjacent M2.12 code slice is implemented: review discard rolls back the auto-saved in-memory set and canonical detected reps require confirmation. Physical Stop/review/discard verification remains open, and M2.10 remains `in_progress` under its clean-evidence guardrail.
+- M2.11 is complete by its offline verification target. `TrainerCore` preserves immutable original load/analyzer summaries, derives current values from ordered typed `user_edit` corrections, distinguishes manual clean evidence from analyzer evidence, rejects invalid counts without clamping, and keeps corrected review discard working.
+- `TrainerApp` has a compact inline review editor for load, counted reps, and clean reps. Applying edits updates the already auto-saved in-memory set; no `Save Set` action or per-rep editing was added.
+- No more physical testing was available in the current night session. Manual review-edit inspection remains queued with the existing M2.9/M2.10/M2.12 device gates; do not start M2.13 as part of this M2.11 continuation.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -230,7 +241,7 @@ Scope:
 
 - Multiple sets.
 - Session summary.
-- Corrections/editing.
+- Persisted corrections across local history.
 - Local history.
 - Local video retention controls.
 
@@ -646,19 +657,39 @@ Use the Ryan-style repo-as-memory loop:
 2. Read this handoff.
 3. Read `docs/bakeoff_results/2026-07-09_engine_selection.md`.
 4. Read `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.
-5. Pick the next M2 ticket, preserving the production live-pose abstraction boundary.
-6. Verify with the listed build/test commands.
-7. Update docs and `docs/decision_log.md`.
-8. Stop or ask before expanding scope.
+5. Read `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
+6. If a physical device is available, inspect M2.11 edits and complete the already-open M2.9/M2.10/M2.12 gates; do not mark those tickets done without their checks.
+7. If work must remain offline, take one user-approved slice only. Current recommendation: fix unknown side-view evidence coercion (M2.5a), then harden lossless active-set pose ingestion (M2.7a). The next feature slice after those is a Foundation-only M2.14a session-summary projection.
+8. Verify Swift changes with:
+   - `swift test --package-path ios/Packages/PoseCore`
+   - `swift test --package-path ios/Packages/SquatAnalysis`
+   - `swift test --package-path ios/Packages/TrainerCore`
+   - `xcodebuild -workspace ios/SquatTrainer.xcworkspace -scheme TrainerApp -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`
+9. Update task status, this handoff, `ios/README.md`, and `docs/decision_log.md`.
+10. Ask before committing. Exclude `.agents/` and `skills-lock.json` unless the user explicitly requests them.
+11. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
 
 Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
 2. M1.11 is complete: separate standing and squat artifacts pass the portrait physical-device viability protocol.
-3. M2.1 through M2.4 are complete. The camera-independent M2.5 seam is implemented and tested, while M2.5 remains in progress pending a live signal source and physical verification.
-4. Camera-backed setup/capture is no longer blocked by M1.11, but it still requires a deliberate shared live-pose abstraction. M2.6 countdown modeling remains a safe independent option.
+3. M2.1 through M2.4 and M2.8 are complete. M2.5–M2.7 code is in and a first physical capture loop succeeded; tickets stay `in_progress` until Stop/Discard device confirmation and the open Arm-set UX discussion are resolved.
+4. Use `SquatTrainer.xcworkspace` for both `PoseBakeoff` and `TrainerApp` (MediaPipe via CocoaPods on both).
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
-6. The later analyzer port must intentionally separate counted reps from clean reps; the Python state machine is reference logic, not a literal Swift specification.
+6. The production analyzer already separates counted reps from clean gates. Preserve that boundary; the Python state machine is reference logic, not a literal Swift specification.
+7. M2.9 full-sequence processing and the first honest M2.10 review are implemented and build-verified. M2.9 needs an on-device Stop/review pass; M2.10 remains open because clean gates are unavailable, not zero. M2.12 review rollback is also implemented and needs device confirmation.
+8. M2.11 is implemented and automated verification passes. Its remaining follow-up is physical UI inspection only; detailed per-rep editing and persistence remain out of scope.
+9. The ranked offline choices and defer rationale are in `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
+10. The product checkpoint excludes `.agents/` and `skills-lock.json`.
+
+## Open UX / Product Discussion (do not invent alone)
+
+- Final copy for the deliberate start control (currently `Arm set`).
+- Post-arm waiting chrome: keep camera primary; status compact.
+- Whether weak-setup override needs more device testing / clearer discovery.
+- Decimal-pad Done button is in; keep keyboard dismiss workable.
+- Physical review check: confirm Stop removes camera immediately, processing transitions automatically, canonical count/load are legible, unavailable clean copy is clear, and low-confidence labeling appears after setup override.
+- Physical M2.11 edit check: edit load/count/clean, challenge invalid values, confirm user-corrected clean provenance, confirm corrected load carries to the next set, and discard a corrected review.
 
 ## Milestone 1 Ticket Breakdown
 

@@ -1,12 +1,14 @@
 # M2 Back Squat Vertical Slice Tasks
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 ## Milestone Goal
 
 Build the first user-facing native iOS workout loop for one exercise: side-view barbell back squat.
 
 Milestone 2 starts after Milestone 1 selects the pose engine. The goal is not a broad fitness app. The goal is to prove that a real lifter can complete repeated back squat sets in the gym with trustworthy tracking, post-set review, and local saved history.
+
+Current implementation is still in-memory only. Durable local history remains M2.13 and has not started.
 
 ## Dependency
 
@@ -17,7 +19,7 @@ Do not start Milestone 2 implementation until:
 - Apple Vision vs MediaPipe engine decision is documented.
 - The chosen engine can run prerecorded clips through the shared `PoseEstimator` path.
 
-The shared protocol does not yet cover live sample buffers. A production live-pose abstraction is an additional dependency before camera-backed setup checks or active capture, not before camera-independent session/UI tickets.
+The original prerecorded-only estimator protocol did not cover live sample buffers. That dependency is now resolved by `PoseCore.LivePoseStreaming` / `LivePoseEvent` and the `TrainerLivePoseCamera` adapter.
 
 ## Task Status Key
 
@@ -25,6 +27,8 @@ The shared protocol does not yet cover live sample buffers. A production live-po
 - `in_progress`: actively being worked
 - `blocked`: cannot proceed without external action
 - `done`: implemented and verified
+
+When a ticket has an explicit offline completion target, `done` may still list a non-blocking physical UI follow-up. Tickets whose acceptance criteria explicitly require a device remain `in_progress` until that gate passes.
 
 ## Product Loop
 
@@ -41,6 +45,14 @@ Start Session
 -> Auto-Saved Post-Set Review
 -> Next Set
 ```
+
+## Current Execution Boundary
+
+- M2.1-M2.4, M2.8, and M2.11 are done.
+- M2.5-M2.7, M2.9, M2.10, and M2.12 retain the physical, UX, or clean-evidence gates documented in their result sections.
+- M2.13 persistence and M2.14 session summary have not started.
+- Do not infer the next ticket from numbering alone. For offline code-only options after M2.11, use `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` and take one user-approved slice.
+- The current ranked hardening candidates are M2.5a optional side-view evidence and M2.7a lossless active-set pose ingestion. Neither has started.
 
 ## Tasks
 
@@ -335,7 +347,7 @@ Documentation updates:
 
 - Record exact user-facing setup messages.
 
-Camera-independent progress (2026-07-10):
+Historical camera-independent progress (2026-07-10; superseded by live-signal progress below):
 
 - Added typed state for the four locked checks: `full_body_visible`, `side_view_likely`, `phone_stable`, and `pose_confidence_ok`; each is `pending`, `passing`, or `failing`.
 - Pending checks cannot be approved or overridden. Fully passing checks produce a `passed` gate disposition without inventing the later high/medium/low capture label. Evaluated failures can be overridden, and that outcome explicitly requires a low-confidence label with the failed check IDs preserved.
@@ -344,24 +356,38 @@ Camera-independent progress (2026-07-10):
 - `TrainerApp` renders all four checks as pending with explicit copy that live checks are not connected and no check is being treated as passed.
 - Exact pending instructions are: `Keep your head, hips, knees, and feet in frame.`, `Stand side-on so the camera can see squat depth.`, `Place the phone on a stable surface.`, and `Use clear lighting and keep your body unobstructed.`
 - Exact failure fixes are: `Move the phone back until your full body stays in frame.`, `Turn so your shoulder and hip line are side-on to the camera.`, `Set the phone down securely; do not hand-hold it.`, and `Improve the lighting and clear obstructions around your body.`
-- Four setup-gate tests bring `TrainerCore` to 16 passing tests. `TrainerApp` passes the generic iOS Simulator build.
-- M2.5 remains `in_progress`. A live signal source, interactive pass/fail/override flow, and `TrainerApp` real-device verification are intentionally not claimed; the remaining engineering dependency is the production live-pose abstraction.
+- Four setup-gate tests were added with the camera-independent seam. Live signals and arming came later (see below).
+- M2.5 remains `in_progress` pending Arm-set UX discussion and a quick override/Stop device pass.
+
+Live-signal progress (2026-07-10, post-checkpoint):
+
+- Added shared `LivePoseStreaming` / `LivePoseEvent` contracts in `PoseCore`, plus `PoseSetupEvidenceExtractor` for full-body, side-view, and pose-confidence evidence from normalized landmarks.
+- Added `SetupGateSignalWindow` in `TrainerCore` to require a bounded live sample window before promoting checks out of `pending`.
+- Added production `TrainerLivePoseCamera` behind the shared live-pose protocol: rear camera, portrait sample buffers, MediaPipe video mode, and the same orientation contract proven in M1.11.
+- Phone stability now comes from `CMDeviceMotion` rather than a synthetic UI toggle.
+- `TrainerApp` shows live camera preview + pose overlay, live check status, approve/`Start Anyway` override, and setup reset. The camera-independent `Advance Test Set` bypass is gone from the session UI.
+- Shared MediaPipe landmark mapping lives in `ios/Shared/Sources/MediaPipePoseMapper.swift` and is reused by `PoseBakeoff` and `TrainerApp`.
+- CocoaPods now pins `MediaPipeTasksVision` for both `PoseBakeoff` and `TrainerApp`; open `SquatTrainer.xcworkspace` for either app.
+- Verification: `PoseCore` tests pass; `TrainerCore` tests pass (29 as of arming work); Simulator and device builds pass for `TrainerApp`.
+- Physical verification (2026-07-11): propped-phone arm flow works. User armed, walked into frame, all four checks went green, countdown ran, live recording observed ~920 frames with pose overlay. Override path not yet exercised on device.
+- Open UX discussion: `Arm set` wording and post-arm waiting UI (camera must stay primary).
+- M2.5 remains `in_progress` until that UX discussion is settled and override/Stop paths get a quick device pass.
 
 ### M2.6 Add Start Set Countdown
 
-Status: pending
+Status: in_progress
 
 Goal:
 
-Give the user time to get into lifting position after tapping `Start Set`.
+Give the user time to get into lifting position after the deliberate start action.
 
 Context:
 
-Setup passing should not auto-start recording. V1 requires deliberate `Start Set`, then countdown. No second tap after countdown.
+Setup passing should not auto-start recording. V1 requires a deliberate start action, then countdown. No second tap after countdown. Because the phone is propped facing the lifter, the deliberate action is an earlier **arm** tap (`Arm set`) before walking into frame.
 
 Tasks:
 
-- Add `Start Set` action.
+- Add deliberate start / arm action.
 - Add countdown state.
 - Default countdown to 5 seconds.
 - Support likely options: 3, 5, 10 seconds.
@@ -371,7 +397,7 @@ Tasks:
 
 Acceptance criteria:
 
-- Countdown starts only after deliberate tap.
+- Countdown starts only after deliberate arm/start.
 - Recording begins automatically after countdown when setup is acceptable.
 - No second tap is required.
 - Bad visibility at countdown end prompts reset/start-anyway choice.
@@ -388,9 +414,20 @@ Documentation updates:
 
 - Record exact countdown options and messages.
 
+Countdown / arming progress (2026-07-10 → 2026-07-11):
+
+- Added tested `PreSetCountdown` and `StartSetArming` in `TrainerCore`.
+- Flow: enter load → `Arm set` → prop phone / walk into frame → when checks are green, 5s countdown starts → recording begins automatically.
+- Weak-setup path is behind `Setup looks weak — other options` → `Accept weak setup` (not a twin primary button).
+- Load field has keyboard Done + scroll-dismiss.
+- Countdown number overlays the camera; no spoken countdown ticks (they made the final second feel stalled).
+- Duration options 3/5/10 remain unimplemented; default remains 5 seconds.
+- Physical arm→countdown→record succeeded once. Visibility-failure confirmation at countdown end not yet device-tested.
+- Open discussion: final arming copy and post-arm chrome.
+
 ### M2.7 Add Active Set Capture State
 
-Status: pending
+Status: in_progress
 
 Goal:
 
@@ -431,9 +468,19 @@ Documentation updates:
 
 - Record any state-machine changes.
 
+Implementation history (2026-07-10 → 2026-07-11):
+
+- Added tested `ActiveSetCapture` in `TrainerCore`: `idle -> recording -> processing -> awaitingReview`, plus `discarded`.
+- Live pose frames increment `framesObserved` during recording. This originally left provisional reps at 0 behind an analyzer seam; M2.8 now supplies the real streaming count.
+- The first seam used a thin stopped handoff. M2.9/M2.10 replaced it with full-sequence processing, in-memory auto-save, and automatic review.
+- `Discard` is immediate when provisional reps are 0; confirmation is required when provisional reps are > 0. No pause control exists.
+- Physical device: countdown auto-started recording and observed ~920 frames with "Recording set" UI. Stop/Discard on-device confirmation still outstanding.
+- `TrainerCore` has 29 passing tests (includes arming + active-set suites).
+- Still open before closing M2.7: device Stop/Discard confirmation and the Arm-set/post-arm UX discussion. M2.8 analyzer-backed provisional counting is physically verified. M2.9/M2.10 review code is now implemented, but its physical pass remains open.
+
 ### M2.8 Implement Provisional Rep Count
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -470,9 +517,22 @@ Documentation updates:
 
 - Record provisional/final behavior if adjusted.
 
+Implementation progress (2026-07-11):
+
+- Replaced the production `SquatAnalyzer` placeholder with a separate streaming detector; the rough M1 `SquatRepDetector` remains bakeoff-only and is not wired into `TrainerApp`.
+- A provisional count now requires a confident visible leg, a short standing calibration, meaningful knee flexion plus hip descent, an ascent, and a return near the lifter's own standing reference.
+- Depth and absolute lockout thresholds are not counted-rep gates. Production rep output carries separate depth/lockout/tempo clean-gate states, which remain explicitly `not_assessed` in M2.8 rather than inventing clean reps.
+- Tracking gaps cancel the in-progress candidate and require standing recalibration. Small knee dips and knee flexion without hip descent are covered as non-counting cases.
+- `TrainerApp` now feeds active-capture `PoseFrame` values to the production analyzer and forwards only its monotonic provisional count into `ActiveSetCapture`.
+- Automated verification passes: `SquatAnalysis` (10 tests), `PoseCore`, `TrainerCore` (35 tests), and the `TrainerApp` workspace Simulator build.
+- Physical-device verification passed on one eight-rep set: the live provisional counter reported all 8 completed reps, including one intentionally shallow rep. Small test leg movements and walking back toward the phone produced no phantom reps.
+- This is a successful integration/behavior check, not an accuracy estimate. Broader footage and set variation are still needed before threshold quality can be claimed.
+- M2.9 now retains the full active-set sequence and runs a fresh batch pass for the canonical count. Both the provisional and finalized counts are preserved in the in-memory app-domain summary, and M2.10 discloses a change when they differ.
+- The finalized result is auto-saved into the in-memory quick session before review. This closes M2.8's remaining finalized/saved-count acceptance criteria. Persistence across launch remains M2.13 and was not started.
+
 ### M2.9 Implement Stop -> Processing -> Review
 
-Status: pending
+Status: in_progress
 
 Goal:
 
@@ -511,9 +571,30 @@ Documentation updates:
 
 - Record processing states/errors.
 
+Historical starting point / guardrails (2026-07-11; superseded by implementation progress below):
+
+- Current `TrainerRootView` uses a fake 600ms processing delay, keeps `ActiveSetCapture` in a thin `awaitingReview` handoff, and does not retain the full active-set pose sequence. Replace this seam; do not build the real review on top of the delay.
+- Retain active-set `[PoseFrame]` values in memory only, beginning at recording start and ending on Stop/Discard. Do not put the per-frame stream in `CompletedSetSummary`, SwiftData, or another structured record.
+- `SquatAnalyzer.analyze(frames:)` already supports deterministic batch replay with the same counted-cycle semantics as streaming. The canonical post-set count should come from that full-sequence pass, not by blindly copying the provisional count.
+- Preserve both provisional and finalized counts so review can disclose a difference. Do not silently rewrite history.
+- Stop must remove the active camera UI immediately, show real processing state, and automatically enter review. Processing failure needs an honest recover/discard path.
+- `TrainerCore` should remain independent of `SquatAnalysis`. Map finalized output into small app-domain summary types rather than importing engine/analyzer implementation types into the session model.
+
+Implementation progress (2026-07-11):
+
+- Active capture now retains only the current set's `[PoseFrame]` values in app memory. The buffer starts at recording, is consumed by finalization, and is cleared after successful review handoff or discard; it is not embedded in `CompletedSetSummary`.
+- `Stop` immediately changes state, removes the camera preview, and stops the live camera/controller. The fake 600 ms delay is gone.
+- Finalization runs `SquatAnalyzer.analyze(frames:)` on the retained full sequence off the main actor. Its result is mapped in `TrainerApp` into `TrainerCore.SetAnalysisSummary`; `TrainerCore` still has no `SquatAnalysis` dependency.
+- The mapped summary preserves provisional and finalized counted reps, explicit clean availability, per-rep timing/count confidence/quality availability, and frame totals.
+- Successful finalization auto-completes the current set into `QuickSession.completedSets` before review and carries load into the next draft. Review requires no save tap.
+- Processing can be discarded while in flight if it hangs. An unexpected finalization/session failure enters an honest failed state with retained-frame retry and discard; no result is claimed as saved on that path.
+- `TrainerCore` tests cover canonical/provisional preservation, failure retry, failure discard, and in-flight processing discard. All required package tests and the `TrainerApp` workspace Simulator build pass.
+- A fresh signed `TrainerApp` 0.1 (build 1) was built from `SquatTrainer.xcworkspace` and installed successfully on the connected iPhone 16 Pro Max at 2026-07-11 01:04 local time. `devicectl` confirmed the installed developer app. Automated launch was denied only because the phone was locked; installation is verified, behavior is not.
+- Remaining before `done`: physical-device Stop → processing → automatic review confirmation, including camera removal and a retry/discard sanity check if practical.
+
 ### M2.10 Build Post-Set Review Screen
 
-Status: pending
+Status: in_progress
 
 Goal:
 
@@ -553,9 +634,29 @@ Documentation updates:
 
 - Add UI notes or screenshots later.
 
+Historical starting point / guardrails (2026-07-11; superseded by implementation progress below):
+
+- The current `awaitingReview` card is only a temporary handoff, not M2.10 review.
+- Counted reps are now trustworthy enough for the first review slice, but clean depth/lockout/tempo gates remain `not_assessed`. Never render unknown clean status as `0 clean reps`, and do not default missing evidence to clean.
+- If required clean gates cannot be implemented and physically challenged in this ticket, show an explicit unavailable/insufficient-evidence state and keep M2.10 `in_progress` rather than making a false quality claim.
+- Keep review compact: load × canonical counted reps first; clean result separate; provisional→finalized change disclosure only when values differ; low-confidence setup label when overridden; primary `Next Set`; secondary discard/end workout.
+- Per-rep timing/count events already exist in `AnalyzedSquatRep`. Add quality markers only for evidence the analyzer actually produces.
+- Avoid dense charts, generic workout logging, persistence, video retention, real-time cues, or exercise expansion in this slice.
+
+Implementation progress (2026-07-11):
+
+- Replaced the temporary stopped handoff with a compact review led by `load × canonical counted reps`.
+- Clean result is visually separate and strongly typed as assessed or unavailable. Current depth/lockout/tempo gates remain unassessed, so review says `Clean reps unavailable` and explicitly says that this is not `0 clean reps`.
+- A provisional → finalized count note appears only when the two values differ.
+- Setup overrides render a visible low-confidence capture label.
+- Counted reps render as a compact numbered quality strip. Current markers are neutral/unavailable because no clean-gate evidence is being invented.
+- The form takeaway is explicitly unavailable until required clean gates are assessed; no fake issue categories or clean claims are shown.
+- `Next Set` is the primary action. `Discard` and `End Workout` are secondary. There is no explicit save action.
+- Remaining before `done`: required clean depth/lockout/tempo conclusions are still unimplemented and physically unchallenged, so M2.10 intentionally remains `in_progress` under its guardrail. Normal and overridden-setup review also need physical-device inspection.
+
 ### M2.11 Add Essential Post-Set Editing
 
-Status: pending
+Status: done
 
 Goal:
 
@@ -593,9 +694,33 @@ Documentation updates:
 
 - Record correction behavior.
 
+Historical starting guardrails (2026-07-11; implemented in the result below):
+
+- This is the recommended codebase-only task while physical testing is unavailable. Keep M2.9, M2.10, and M2.12 physical gates open; do not mark them done from Simulator or unit tests.
+- `QuickSession` now auto-completes a finalized set before review. `CompletedSetSummary` preserves the analyzer-mapped `SetAnalysisSummary`, and review discard can roll back only the most recently reviewed set.
+- Add correction state in `TrainerCore`, not `SquatAnalysis`. `TrainerCore` must remain Foundation-only and analyzer-independent.
+- Preserve immutable original model output. User-facing corrected values should be derived from the original finalized summary plus an ordered correction log; never overwrite the analyzer result in place.
+- Scope editing to load, counted reps, and clean reps. Existing discard remains M2.12 behavior. Do not add detailed per-rep tag editing, persistence, history, video, coaching, or exercise expansion.
+- Unknown clean status must remain unavailable until the user explicitly edits clean reps. A manual clean-rep correction is user evidence, not a model claim, and should be labeled/represented as such.
+- Enforce nonnegative counts and `clean <= counted`. Reject impossible edits with clear validation; do not silently clamp values or turn unavailable clean evidence into zero.
+- Preserve correction metadata sufficient for later persistence: timestamp, field, previous user-facing value, new value, and `user_edit` reason.
+- Use TDD one behavior at a time through public `TrainerCore` APIs, then add the smallest compact edit affordance to the existing review. No explicit Save Set action should reappear; applying an edit updates the in-memory reviewed set.
+- Automated completion target: focused correction tests, all three package suites, and the `TrainerApp` workspace Simulator build. Physical edit-flow inspection can remain a follow-up.
+
+Result (2026-07-11):
+
+- Added Foundation-only correction types and public `QuickSession` correction behavior for load, counted reps, and clean reps. `CompletedSetSummary` keeps its original load and analyzer-mapped `SetAnalysisSummary` immutable, then derives current review values by replaying its ordered `userCorrections`.
+- Every correction records timestamp, typed field, previous user-facing value, new value, and the stable `user_edit` reason. Repeated edits use the latest derived value as the next correction's previous value.
+- Clean review state distinguishes analyzer-assessed, user-corrected, and unavailable values. An explicit manual clean count can replace unavailable review status, but the UI labels it `User corrected — not analyzer evidence`; leaving the edit field blank preserves unavailable rather than creating zero.
+- Negative counted/clean values and `clean > counted` are rejected with explicit errors. Validation applies in both directions, including lowering counted reps below an existing analyzer or user clean count; values are never clamped.
+- Correcting review load also updates the next draft's carried-forward load. Review discard removes a corrected auto-saved set and restores the set ordinal with the corrected load and a reset setup gate.
+- Added a compact inline `Edit results` affordance to the existing review for load/unit, counted reps, and clean reps. `Apply edits` mutates the already auto-saved in-memory set and refreshes review; it does not reintroduce `Save Set` or detailed per-rep editing.
+- Added 10 public-behavior correction tests through `QuickSession`. Final verification passes: `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (45 tests), and the `TrainerApp` workspace Simulator build.
+- Follow-up manual UI verification remains: exercise load/count/clean edits (including unavailable → manual clean), validation copy, keyboard dismissal, corrected next-set load, and discard after correction on a physical device. M2.9, M2.10, and M2.12 retain their separate physical gates.
+
 ### M2.12 Implement Discard Behavior
 
-Status: pending
+Status: in_progress
 
 Goal:
 
@@ -630,6 +755,15 @@ Files likely touched:
 Documentation updates:
 
 - Record discard confirmation copy.
+
+Implementation progress (2026-07-11):
+
+- Active-set zero-rep discard remains immediate; any detected provisional rep requires `Discard this set? Counted reps were detected.` confirmation.
+- Processing and failed-processing states can now be discarded, providing an escape hatch for a hung or failed finalization.
+- Review discard uses the canonical finalized count when available, so a rep found only by batch finalization still requires confirmation.
+- Because successful finalization auto-saves in memory before review, review discard now removes that exact most-recent completed set and restores the set ordinal/load draft with setup reset. The discarded set no longer contributes to the session's completed-set count.
+- `TrainerCore` tests cover active, processing, failed-processing, canonical-review confirmation, and reviewed-set rollback behavior.
+- Remaining before `done`: physical-device checks for zero-rep immediate discard, detected-rep confirmation, and review rollback.
 
 ### M2.13 Add Local Persistence
 

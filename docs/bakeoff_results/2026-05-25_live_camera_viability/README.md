@@ -168,3 +168,5 @@ Known limitations when interpreting the device result:
 Do not use this live check as the engine-selection decision by itself. It validates real-time feasibility after the prerecorded label/scoring loop. M1.12 used the available prerecorded evidence, confidence behavior, and integration cost to select the implementation direction while retaining this live result as an open gate.
 
 M1.12 is documented at `../2026-07-09_engine_selection.md`. MediaPipe is selected for Milestone 2 implementation, and M1.11 has now cleared the physical-device live-feasibility gate. Production work still requires a deliberate shared live-pose abstraction rather than copying this internal harness into `TrainerApp`.
+
+Implementation follow-up (2026-07-11): that abstraction now exists in `PoseCore` as `LivePoseStreaming` / `LivePoseEvent`, and `TrainerApp` uses its own `TrainerLivePoseCamera` adapter with the validated portrait orientation contract. The historical requirement above is resolved; physical `TrainerApp` Stop/review/edit gates remain separate.

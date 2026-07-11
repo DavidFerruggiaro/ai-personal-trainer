@@ -1,6 +1,16 @@
-# Next Chat Prompt: M1.10 Manual Labels And Scoring
+# Archived Next Chat Prompt: M1.10 Manual Labels And Scoring
 
-Use this prompt to start the next fresh Codex chat.
+Historical only. M1.10 is complete, MediaPipe is selected, M1.11 live viability passed, and the native rebuild has progressed through M2.11.
+
+Do not use the prompt below to start current work. A fresh agent should begin with:
+
+1. `AGENTS.md`
+2. `docs/native_rebuild_agent_handoff.md`
+3. `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
+4. `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`
+5. `docs/decision_log.md`
+
+The original prompt is retained below as workflow history.
 
 ```text
 /goal Complete M1.10 manual labels and scoring for the side-view squat pose bakeoff.

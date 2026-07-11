@@ -1,6 +1,6 @@
 # Native Rebuild Product Spec
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 ## Product Vision
 
@@ -34,6 +34,8 @@ Included:
 - Local workout/session history.
 - Local video retention by default, with user controls.
 
+These are v1 target capabilities, not a claim that every item is implemented. As of M2.11, live counting/finalization/review/corrections exist in memory; real-time coaching, durable history, and video retention have not started.
+
 Deferred:
 
 - Machines.
@@ -50,8 +52,8 @@ Deferred:
 2. Select exercise explicitly.
 3. Confirm or enter weight using history-based defaults.
 4. Run a lightweight setup gate.
-5. Tap `Start Set`.
-6. Use a short countdown so the lifter can get into position.
+5. Tap `Arm set` (deliberate start while you still have the phone), prop the phone, walk into frame.
+6. When setup is acceptable, run a short countdown, then begin recording automatically.
 7. Show provisional live rep count.
 8. Give rare, concise audio cues only when useful and confident.
 9. Stop manually, with auto-end as a later convenience.
@@ -83,11 +85,11 @@ The screen should show:
 - Current/latest cue text only if a cue fires.
 - Obvious stop/discard controls.
 
-The app should not auto-start recording when setup passes. V1 should require a deliberate `Start Set` tap, followed by a short countdown before recording begins. Default countdown is 5 seconds, with 3, 5, and 10 second options as likely controls.
+The app should not auto-start recording when setup passes. V1 requires a deliberate start action before the lifter walks away from the phone. Current implementation uses `Arm set` (wording is an open UX discussion): it locks load, then waits for setup while the phone is propped. A short countdown follows once setup is acceptable, then recording begins. Default countdown is 5 seconds, with 3, 5, and 10 second options as likely controls.
 
 Countdown behavior:
 
-- After `Start Set`, enter a dedicated pre-set countdown state.
+- After the deliberate arm/start action and setup readiness, enter a dedicated pre-set countdown state.
 - Show a large countdown.
 - Optionally use simple tones or voice for the final 3 seconds.
 - Continue checking setup quality quietly during countdown.
@@ -125,6 +127,8 @@ Separate counted reps from clean reps.
 
 - `counted_rep`: the rep happened and should count in workout volume.
 - `clean_rep`: the rep met the quality gates.
+
+The counted-rep detector must recognize a completed squat cycle without requiring clean depth or an absolute lockout threshold. Those are quality conclusions, not proof that no rep happened. If required clean gates have not been assessed or lack evidence, clean status stays unknown rather than defaulting to clean.
 
 Squat v1 clean-rep gates:
 
@@ -200,6 +204,21 @@ V1 should support lightweight corrections for trust and data quality:
 
 Preserve original model output in metadata.
 
+User corrections are a separate evidence layer:
+
+- Derive user-facing corrected values from immutable original model output plus ordered corrections.
+- A manual clean-rep edit may replace an unavailable user-facing clean count, but it must remain identifiable as a user correction rather than analyzer evidence.
+- Reject negative counts and clean counts greater than counted reps. Do not silently clamp edits.
+- Missing clean evidence remains unavailable until an explicit user correction or a real analyzer assessment supplies it.
+
+Current implementation (M2.11):
+
+- `TrainerCore.CompletedSetSummary` preserves immutable original load and analyzer-mapped analysis.
+- Current review values replay an ordered typed correction log with timestamp, field, previous value, new value, and `user_edit` reason.
+- Clean review state distinguishes analyzer-assessed, user-corrected, and unavailable evidence.
+- Corrected load becomes the next set's carried default.
+- The inline review editor applies changes directly to the already auto-saved in-memory set; there is no separate save action.
+
 Accidentally triggered sets should be discarded from workout history, not saved as zero-rep sets. User-facing history should behave as if the accidental set never happened.
 
 Post-set review should allow inline editing only for essentials:
@@ -229,6 +248,13 @@ Minimum `SetResult` fields:
 - Optional link to original video or overlay export.
 
 Videos should be saved locally by default in v1, with controls to delete video while keeping `SetResult`. No required account or cloud sync in v1.
+
+V1 persistence uses a hybrid local model:
+
+- SwiftData for structured workout, set, correction, settings, and lightweight summary records.
+- Files for videos, pose exports, overlays, and other heavy artifacts.
+- Structured records store file references/asset IDs, never full videos or per-frame pose streams.
+- `TrainerCore` remains Foundation-only; SwiftData belongs in an app or dedicated persistence layer.
 
 ## Architecture Direction
 
@@ -276,10 +302,13 @@ Initial iOS shape:
 ```text
 ios/
   PoseBakeoff/       # internal test app
-  TrainerApp/        # future user-facing app
+  TrainerApp/        # user-facing Back Squat quick-session app
+  Shared/            # shared app-target adapters such as MediaPipe mapping
   Packages/
-    PoseCore/        # pose schema, PoseEstimator protocol, export types
-    SquatAnalysis/   # rep counting and clean-rep logic, initially placeholder
+    PoseCore/        # pose schema, estimator/live-stream contracts, export types
+    SquatAnalysis/   # production rep counting plus bakeoff scoring
+    TrainerCore/     # Foundation-only app/session/review domain
+  SquatTrainer.xcworkspace
 ```
 
 Use SwiftUI for app shell and simple screens. Use AVFoundation, Vision, and other lower-level frameworks where needed for video, frame extraction, pose estimation, and camera work.
@@ -290,7 +319,7 @@ MediaPipe Pose Landmarker is the selected implementation direction for the back-
 
 The selection is based on stronger prerecorded lower-body continuity and the first labeled offline score from a native MediaPipe pose export. M1.11 subsequently passed portrait physical-device live viability on separate standing and side-view bodyweight-squat artifacts. This does not certify clean-rep gates or production tracking accuracy. See `docs/bakeoff_results/2026-07-09_engine_selection.md` and `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 
-Keep engine-native MediaPipe types behind an app-owned adapter. The current shared `PoseEstimator` protocol covers prerecorded URLs only; production live streaming needs a deliberate shared abstraction rather than copying the `PoseBakeoff` camera harness into the UI.
+Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estimation uses `PoseEstimator`; production live capture uses the shared `LivePoseStreaming` / `LivePoseEvent` boundary in `PoseCore`. `TrainerLivePoseCamera` implements that boundary and reuses the portrait orientation contract proven by `PoseBakeoff`.
 
 ## Milestones
 
@@ -301,7 +330,7 @@ Keep engine-native MediaPipe types behind an app-owned adapter. The current shar
    Native iOS core loop: exercise selection, weight input, setup gate, live analysis, rep count, stop/discard, post-set review, save set.
 
 3. Workout Session MVP
-   Multiple sets, session summary, corrections, local history, video retention controls.
+   Multiple sets, session summary, persisted corrections, local history, video retention controls.
 
 4. Form Quality Hardening
    Tune depth, lockout, tempo, torso angle, confidence labeling, low-quality capture handling, and conservative cueing.
@@ -312,10 +341,18 @@ Keep engine-native MediaPipe types behind an app-owned adapter. The current shar
 6. Training Intelligence Foundation
    Trends, quality history, better defaults, lightweight next-set suggestions, and groundwork for future programming recommendations.
 
+Current boundary (2026-07-11):
+
+- M1 is complete enough to support M2: MediaPipe is selected and portrait live viability passed.
+- M2.1-M2.4, M2.8, and M2.11 are done.
+- M2.5-M2.7, M2.9, M2.10, and M2.12 have implementation in the working tree but retain documented UX/device or clean-evidence gates.
+- M2.13 persistence and M2.14 session summary have not started.
+- The current installed device build predates M2.11; latest M2.11 code is package-tested and Simulator-build verified only.
+
 ## Open Questions
 
-- What exact local persistence technology should v1 use: SwiftData, SQLite, files, or a hybrid?
 - What is the minimum TrainerApp visual design system?
-- What editing/correction UX is sufficient without turning the app into a spreadsheet?
+- What default local video-retention policy balances useful evidence with storage pressure?
+- What evidence threshold is required before depth/lockout/tempo can produce user-facing clean conclusions?
 - When should front/three-quarter form checks re-enter the plan?
 - Which lower-body exercise follows back squat after the vertical slice proves itself?

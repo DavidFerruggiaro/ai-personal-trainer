@@ -68,12 +68,16 @@ struct SetupGateTests {
 
         try session.setCurrentSetLoad(load)
         #expect(throws: QuickSessionError.missingSetupGateOutcome) {
-            try session.completeCurrentSet()
+            try session.completeCurrentSet(analysis: unavailableAnalysis)
         }
         try session.setCurrentSetSetupGateOutcome(outcome)
         #expect(session.currentSet.setupGateOutcome == outcome)
 
-        let completed = try session.completeCurrentSet()
+        try session.clearCurrentSetSetupGateOutcome()
+        #expect(session.currentSet.setupGateOutcome == nil)
+        try session.setCurrentSetSetupGateOutcome(outcome)
+
+        let completed = try session.completeCurrentSet(analysis: unavailableAnalysis)
 
         #expect(completed.setupGateOutcome == outcome)
         #expect(session.currentSet.load == load)
@@ -84,5 +88,16 @@ struct SetupGateTests {
         SetupGateAssessment(statuses: Dictionary(
             uniqueKeysWithValues: SetupCheckID.allCases.map { ($0, status) }
         ))
+    }
+
+    private var unavailableAnalysis: SetAnalysisSummary {
+        SetAnalysisSummary(
+            provisionalCountedReps: 0,
+            finalizedCountedReps: 0,
+            cleanResult: .unavailable,
+            reps: [],
+            framesObserved: 0,
+            framesAnalyzed: 0
+        )
     }
 }

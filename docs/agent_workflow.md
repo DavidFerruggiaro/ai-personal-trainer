@@ -1,6 +1,6 @@
 # Agent Workflow
 
-Last updated: 2026-05-24
+Last updated: 2026-07-11
 
 This document templates a lightweight GStack/GBrain-inspired workflow for this repo. It does not require GStack or GBrain to be installed yet.
 
@@ -20,14 +20,17 @@ Use this as the operating rhythm for future agents and implementation sessions.
    - `docs/rebuild_product_spec.md`
    - `docs/pose_bakeoff_plan.md`
    - `docs/decision_log.md`
+   - `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
+   - `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`
 
 2. Identify the current milestone.
-   - Default current milestone: Milestone 1, Pose Bakeoff Harness.
-   - If Xcode is missing, continue spec/planning work only.
+   - Default current milestone: **Milestone 2, Back Squat Vertical Slice** (M1 bakeoff complete; MediaPipe selected).
+   - Current code boundary: M2.11 essential corrections is complete; M2.9/M2.10/M2.12 and parts of M2.5-M2.7 retain documented physical or product gates.
+   - Do not infer a next implementation ticket from ticket number alone. Read `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` and get the user's scope choice.
 
 3. Pick one small ticket.
-   - Prefer the next ticket in `docs/native_rebuild_agent_handoff.md`.
-   - Do not jump ahead to TrainerApp product UI before PoseBakeoff basics work.
+   - Prefer the next ticket in `docs/native_rebuild_agent_handoff.md` / `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.
+   - Keep engine-specific code behind shared live-pose / estimator boundaries.
 
 4. Implement narrowly.
    - Keep shared code in `ios/Packages`.
@@ -36,7 +39,8 @@ Use this as the operating rhythm for future agents and implementation sessions.
 
 5. Verify.
    - Run the smallest relevant checks.
-   - For Swift packages, use `swift test --package-path ...` once full Xcode is installed.
+   - For Swift packages, use `swift test --package-path ...`.
+   - For `TrainerApp`, always build through `ios/SquatTrainer.xcworkspace`, never the project directly.
    - For Python prototype changes, run the relevant existing manual or scripted checks.
 
 6. Review through roles.
@@ -48,6 +52,8 @@ Use this as the operating rhythm for future agents and implementation sessions.
 7. Update memory.
    - Append important decisions to `docs/decision_log.md`.
    - Update the handoff/spec if the source of truth changed.
+   - Update the active task result and test counts.
+   - Ask before committing; exclude `.agents/` and `skills-lock.json` unless explicitly requested.
 
 ## Role Prompts
 

@@ -16,3 +16,7 @@ YYYY-MM-DD_milestone_1_review.md
 YYYY-MM-DD_post_set_review_ux.md
 YYYY-MM-DD_pose_estimator_architecture.md
 ```
+
+Current reviews:
+
+- `2026-07-11_post_m2_11_roadmap_review.md`: ranked offline code-only work, blocked physical gates, and cleanup/security timing after M2.11.

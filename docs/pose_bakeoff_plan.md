@@ -1,6 +1,6 @@
 # Pose Bakeoff Plan
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 ## Purpose
 
@@ -32,7 +32,9 @@ MediaPipe Pose Landmarker is selected as the Milestone 2 implementation directio
 
 The full rationale is recorded in `docs/bakeoff_results/2026-07-09_engine_selection.md`. MediaPipe has the strongest current lower-body continuity and the only labeled score from a native MediaPipe pose export: the Python M1 scorer reported 7 expected, 7 predicted, 0 missed, and 0 phantom on one clean side-view barbell clip. Apple Vision remains in `PoseBakeoff` as a baseline comparator.
 
-This is a conditional implementation decision, not final accuracy certification. The evidence set is still small and clean-rep gates have not been validated. M1.11 physical-iPhone portrait live viability now passes on separate standing and side-view bodyweight-squat artifacts. This clears the feasibility gate but does not replace production analysis validation or the need for a shared live-pose abstraction.
+This is a conditional implementation decision, not final accuracy certification. The evidence set is still small and clean-rep gates have not been validated. M1.11 physical-iPhone portrait live viability now passes on separate standing and side-view bodyweight-squat artifacts. This clears the feasibility gate but does not replace production analysis validation.
+
+The shared live-pose dependency is now implemented in `PoseCore` as `LivePoseStreaming` / `LivePoseEvent`. `TrainerApp` consumes it through `TrainerLivePoseCamera`; the app did not copy the `PoseBakeoff` debug harness directly.
 
 For M1.11, the originally stated 24 FPS and 75ms targets now serve as first-pass live viability thresholds for the selected MediaPipe engine as well, not only as the condition under which Apple Vision would have won on convenience. The complete MediaPipe pass/fail criteria and fallback path are in `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 
@@ -166,7 +168,7 @@ iOS project
   Real app: TrainerApp
 ```
 
-PoseBakeoff should share core modules with the future app but keep debug UI, metrics, overlays, and export controls out of the consumer experience.
+PoseBakeoff shares `PoseCore`, `SquatAnalysis`, and the MediaPipe landmark mapper with the current `TrainerApp`, while keeping debug metrics, comparison controls, and export UI out of the consumer experience.
 
 ## Day-One Scope
 
@@ -266,7 +268,9 @@ Use:
 Initial shared packages:
 
 - `PoseCore`: normalized pose types, `PoseEstimator` protocol, JSON export shape.
-- `SquatAnalysis`: rep counting and clean-rep logic, initially placeholder.
+- `SquatAnalysis`: production squat-cycle analysis plus bakeoff label/scoring tools.
+
+App-domain session and review state lives separately in Foundation-only `TrainerCore`; `PoseBakeoff` does not depend on it.
 
 ## Remaining Questions
 
@@ -274,3 +278,5 @@ Initial shared packages:
 - How to quantify landmark jitter beyond completeness and longest-miss metrics.
 - Whether out-of-frame MediaPipe coordinates should remain unbounded, be clamped, or be separately flagged in the app-owned schema.
 - How production video and debug artifact files should be organized on-device before persistence work begins.
+
+No active implementation ticket should be selected from this M1 plan. Use `docs/tasks/M2_back_squat_vertical_slice_tasks.md` and `docs/native_rebuild_agent_handoff.md` for current work.

@@ -1,6 +1,6 @@
 # Agent Build System Plan
 
-Last updated: 2026-05-24
+Last updated: 2026-07-11
 
 ## Purpose
 
@@ -38,6 +38,8 @@ Every new agent should be able to restart from:
 - `docs/pose_bakeoff_plan.md`
 - `docs/agent_workflow.md`
 - `docs/decision_log.md`
+- `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
+- `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`
 
 The repo should be the brain. Chat is temporary.
 
@@ -102,6 +104,9 @@ Already implemented:
 - `docs/tasks/M1_pose_bakeoff_tasks.md`
 - `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
 - Native iOS skeleton
+- MediaPipe-backed live pose abstraction and `TrainerApp` camera flow
+- Foundation-only `TrainerCore` with 45 tests through M2.11
+- Full-sequence finalization, in-memory auto-save, honest review, corrections, and discard rollback
 
 ### Missing But Planned
 
@@ -139,7 +144,7 @@ Use now:
 
 ### Build Loop
 
-Use once Xcode is installed:
+Use now:
 
 1. Agent reads `AGENTS.md`.
 2. Agent identifies next milestone ticket.
@@ -149,7 +154,7 @@ Use once Xcode is installed:
 6. Agent updates docs and decision log.
 7. Agent stops or asks for approval before the next ticket.
 
-Use this loop now. Xcode is installed, the native harness builds, and M1 tickets have enough structure to execute one at a time.
+Xcode is installed, all three package suites pass, and both apps build through `ios/SquatTrainer.xcworkspace`. Current work should still use one bounded ticket per loop because the working tree after `9eaeae3` is large and several M2 tickets retain physical gates.
 
 ### Fresh Chat Loop
 
@@ -165,10 +170,10 @@ Fresh chat start contract:
 3. The agent confirms the active ticket and acceptance criteria.
 4. The agent implements, verifies, updates docs, and stops.
 
-The best current fresh-chat goal is:
+The current fresh-chat contract is:
 
 ```text
-Complete M1.10 manual labels and scoring for side-view squat clips.
+Read the native rebuild handoff and post-M2.11 roadmap review, then execute one user-selected code-only ticket. Preserve all documented physical gates and stop after that ticket.
 ```
 
 Do not use a broad goal like "build the whole app." Use `/goal` for one milestone ticket or one clearly bounded vertical slice.
@@ -205,10 +210,11 @@ Agents must not:
 
 ## Near-Term Action Plan
 
-1. Start a fresh chat for M1.10.
-2. Use `/goal` if available to anchor the work around one ticket.
-3. Build the manual label schema and first scoring loop.
-4. Verify against the existing in-app MediaPipe export artifacts.
-5. Update the handoff, task file, decision log, and bakeoff results.
-6. Run the standard verification commands.
-7. Only then decide whether to expand the labeled dataset or move to live camera viability.
+1. Start from the latest branch checkpoint, which includes the M2.11 product/docs batch and intentionally excludes `.agents/` and `skills-lock.json`.
+2. At the next device session, close or update the physical gates for M2.5-M2.7, M2.9, M2.10, M2.11 UI, and M2.12.
+3. For offline work, choose exactly one bounded ticket from `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
+4. Run the three Swift package suites and the relevant workspace build.
+5. Update the task file, handoff, README, and decision log.
+6. Stop and ask before the next ticket.
+
+Do not start an unattended Ralph-style loop while the working tree is large, physical gates are open, or the next ticket has not been chosen by the user.

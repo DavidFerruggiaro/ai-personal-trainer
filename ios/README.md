@@ -5,16 +5,16 @@ This folder contains the native iOS rebuild skeleton for the AI Personal Trainer
 The current Python/Streamlit app remains the reference prototype. The native rebuild starts here and is split into:
 
 - `PoseBakeoff/`: internal measurement app for comparing pose engines.
-- `TrainerApp/`: user-facing Back Squat app, currently at the quick-start shell.
-- `Packages/PoseCore/`: shared pose schema, estimator protocol, and export types.
-- `Packages/SquatAnalysis/`: shared squat rep/form analysis logic, initially a placeholder.
-- `Packages/TrainerCore/`: app-domain quick-session state, with catalog/load models added only as their M2 tickets begin.
+- `TrainerApp/`: user-facing Back Squat quick-session app with live setup, arming, countdown, active capture, provisional count, full-sequence finalization, post-set review, and compact result correction.
+- `Packages/PoseCore/`: shared pose schema, estimator/live-stream contracts, setup evidence, and export types.
+- `Packages/SquatAnalysis/`: production streaming squat-cycle detection plus bakeoff label/scoring tools. Clean-rep gates are modeled separately and are not yet assessed.
+- `Packages/TrainerCore/`: Foundation-only quick-session, setup-gate, arming, countdown, active-capture, finalized-summary, ordered-correction, and review-discard state.
 
 ## Current Status
 
 The shared Swift packages are intentionally small and buildable. The checked-in Xcode project is `SquatTrainer.xcodeproj`.
 
-MediaPipe is integrated through CocoaPods, so use `SquatTrainer.xcworkspace` for `PoseBakeoff` from now on.
+MediaPipe is integrated through CocoaPods, so use `SquatTrainer.xcworkspace` for both `PoseBakeoff` and `TrainerApp`.
 
 Package verification previously required full Xcode. Xcode is now installed and selected:
 
@@ -47,15 +47,17 @@ Simulator build checks:
 
 ```bash
 xcodebuild -workspace SquatTrainer.xcworkspace -scheme PoseBakeoff -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project SquatTrainer.xcodeproj -scheme TrainerApp -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+xcodebuild -workspace SquatTrainer.xcworkspace -scheme TrainerApp -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
 MediaPipe setup:
 
 - CocoaPods 1.16.2 is installed locally through Homebrew.
-- `PoseBakeoff` depends on `MediaPipeTasksVision` 0.10.35.
-- The full pose model is bundled at `PoseBakeoff/Resources/pose_landmarker_full.task`.
+- `PoseBakeoff` and `TrainerApp` both depend on `MediaPipeTasksVision` 0.10.35.
+- The full pose model is bundled at `PoseBakeoff/Resources/pose_landmarker_full.task` and copied into both app targets.
+- Shared MediaPipe landmark mapping lives in `Shared/Sources/MediaPipePoseMapper.swift`.
 - `PoseBakeoff` can run either `MediaPipePoseEstimator` or `AppleVisionPoseEstimator` for the same selected video.
+- `TrainerApp` uses a production `TrainerLivePoseCamera` behind the shared `LivePoseStreaming` contract for setup-gate evidence and active-set analysis.
 
 If CocoaPods has to be reinstalled on a fresh machine and reports a Ruby UTF-8 locale error, run:
 
@@ -78,10 +80,20 @@ Current verification:
 Current milestone boundary:
 
 1. MediaPipe is selected for the Milestone 2 implementation direction; see `../docs/bakeoff_results/2026-07-09_engine_selection.md`.
-2. M1.11 passes the documented portrait physical-iPhone protocol. Production live capture still requires a shared live-pose abstraction rather than copying the bakeoff harness into `TrainerApp`.
-3. Camera-independent M2.1 through M2.4 are complete, and the M2.5 setup-gate state/UI seam is implemented without live-camera claims. M2.5 remains in progress until a live signal source and `TrainerApp` device verification exist.
-4. Keep using `SquatTrainer.xcworkspace` for `PoseBakeoff`. `TrainerApp` still builds from the project until its eventual MediaPipe production adapter is deliberately wired.
-5. Do not use the rough bakeoff hip-dip detector as the production rep counter; `SquatAnalyzer` still needs a tested counted-vs-clean redesign.
+2. M1.11 passes the documented portrait physical-iPhone protocol.
+3. M2.1–M2.4 are complete. M2.5–M2.7 are implemented with a first successful physical arm→countdown→record loop; close those tickets after Arm-set UX discussion + Stop/Discard device confirmation.
+4. Keep using `SquatTrainer.xcworkspace` for both apps.
+5. M2.8 production provisional counting is wired and passed its first physical behavior check: 8/8 completed reps, including one shallow rep, with no phantoms from small leg movements or walking toward the phone. This is one integration run, not an accuracy certification.
+6. The rough bakeoff hip-dip detector remains bakeoff-only. The production `SquatAnalyzer` separates counted cycles from clean depth/lockout/tempo gates; clean status is currently unassessed.
+7. M2.9 now retains active-set pose frames only in memory, removes/stops the camera on Stop, batch-finalizes from the full sequence off the main actor, and auto-saves the mapped app-domain summary before review. Processing has retry/discard handling; the fake delay is removed.
+8. M2.10 now shows load × canonical counted reps, provisional/final differences, low-confidence setup labeling, neutral per-rep markers, primary `Next Set`, and secondary discard/end actions. Clean depth/lockout/tempo remain unassessed, so the UI says `Clean reps unavailable` rather than `0 clean reps`.
+9. The adjacent M2.12 slice removes review-discarded sets from in-memory completed sets and restores the set ordinal/load draft. M2.9/M2.10/M2.12 still need physical Stop/review/discard inspection; M2.10 remains open until clean-gate evidence exists.
+10. M2.11 essential corrections are implemented. Original load/analyzer summaries remain immutable; current load/counted/clean values are derived from ordered `user_edit` corrections. Manual clean counts are labeled as user evidence, and invalid counts are rejected without clamping.
+11. Review now has a compact inline editor for load/unit, counted reps, and clean reps. Applying edits updates the auto-saved in-memory set, corrected load carries to the next draft, and corrected sets still roll back through review discard. There is no explicit Save Set or per-rep editing.
+12. Latest verification passes for `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (45 tests), and the `TrainerApp` workspace Simulator build.
+13. A signed `TrainerApp` 0.1 (build 1) from before M2.11 was built through the workspace and installed on the connected iPhone 16 Pro Max at 2026-07-11 01:04 local time. Installed-app lookup succeeded; automated launch was blocked only because the phone was locked. Stop/review/edit behavior remains physically unverified.
+14. Next physical pass should cover M2.9/M2.10/M2.12 plus M2.11 load/count/clean edits, validation copy, keyboard dismissal, user-clean provenance, corrected next-set load, and corrected-set discard.
+15. The latest `codex/native-rebuild-checkpoint` commit contains the post-`9eaeae3` M2 implementation/docs batch. `.agents/` and `skills-lock.json` remain intentionally excluded.
 
 ## Package Checks
 

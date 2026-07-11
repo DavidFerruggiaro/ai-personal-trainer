@@ -433,7 +433,7 @@ extension LiveMediaPipeCameraModel: AVCaptureVideoDataOutputSampleBufferDelegate
                 timestampInMilliseconds: timestampMilliseconds
             )
             let latencyMilliseconds = (ProcessInfo.processInfo.systemUptime - startedProcessing) * 1000
-            let poseFrame = MediaPipePoseEstimator.mapResult(
+            let poseFrame = MediaPipePoseMapper.mapResult(
                 result,
                 timestampSeconds: timestampSeconds
             )

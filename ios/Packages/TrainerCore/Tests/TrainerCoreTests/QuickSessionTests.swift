@@ -51,6 +51,71 @@ struct QuickSessionTests {
         ))
     }
 
+    @Test func finalizedAnalysisAutoSavesIntoCompletedSetWithoutInventingCleanReps() throws {
+        var session = makeSession()
+        let load = try TrainingLoad(value: 185, unit: .pounds)
+        let setup = try passingSetupOutcome()
+        let analysis = SetAnalysisSummary(
+            provisionalCountedReps: 5,
+            finalizedCountedReps: 4,
+            cleanResult: .unavailable,
+            reps: [
+                SetRepSummary(
+                    index: 1,
+                    startSeconds: 1,
+                    bottomSeconds: 2,
+                    endSeconds: 3,
+                    countConfidence: 0.9,
+                    quality: .unavailable
+                )
+            ],
+            framesObserved: 120,
+            framesAnalyzed: 118
+        )
+
+        try session.setCurrentSetLoad(load)
+        try session.setCurrentSetSetupGateOutcome(setup)
+        let completed = try session.completeCurrentSet(
+            analysis: analysis,
+            at: Date(timeIntervalSince1970: 130),
+            nextSetID: secondSetID
+        )
+
+        #expect(completed.analysis == analysis)
+        #expect(session.completedSets == [completed])
+        #expect(session.currentSet.ordinal == 2)
+        #expect(session.currentSet.load == load)
+        #expect(session.currentSet.setupGateOutcome == nil)
+    }
+
+    @Test func discardingReviewedSetRemovesItAndRestoresTheSetOrdinal() throws {
+        var session = makeSession()
+        let load = try TrainingLoad(value: 185, unit: .pounds)
+        let setup = try passingSetupOutcome()
+        let analysis = SetAnalysisSummary(
+            provisionalCountedReps: 1,
+            finalizedCountedReps: 1,
+            cleanResult: .unavailable,
+            reps: [],
+            framesObserved: 30,
+            framesAnalyzed: 30
+        )
+        try session.setCurrentSetLoad(load)
+        try session.setCurrentSetSetupGateOutcome(setup)
+        let completed = try session.completeCurrentSet(
+            analysis: analysis,
+            nextSetID: secondSetID
+        )
+
+        try session.discardCompletedSetFromReview(completed.id)
+
+        #expect(session.completedSets.isEmpty)
+        #expect(session.currentSet.id == secondSetID)
+        #expect(session.currentSet.ordinal == 1)
+        #expect(session.currentSet.load == load)
+        #expect(session.currentSet.setupGateOutcome == nil)
+    }
+
     @Test func endingRecordsLifecycleAndRejectsLaterMutation() throws {
         var session = makeSession()
         let endedAt = Date(timeIntervalSince1970: 180)
@@ -79,5 +144,11 @@ struct QuickSessionTests {
             startedAt: startedAt,
             initialSetID: firstSetID
         )
+    }
+
+    private func passingSetupOutcome() throws -> SetupGateOutcome {
+        try SetupGateAssessment(statuses: Dictionary(
+            uniqueKeysWithValues: SetupCheckID.allCases.map { ($0, .passing) }
+        )).approve(at: Date(timeIntervalSince1970: 110))
     }
 }

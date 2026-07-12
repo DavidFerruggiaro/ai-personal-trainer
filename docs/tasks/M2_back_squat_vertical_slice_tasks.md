@@ -917,6 +917,7 @@ Result (2026-07-12):
 - Ending a nonempty session now shuts down capture and replaces the workout in place with a concise transient summary: set rows, clean evidence, counted total, low-confidence count, honest unavailable form-trend copy, and `Done`. Empty sessions still dismiss directly.
 - Review `Next Set`, `Discard`, and `End Workout` actions are withheld while edits are unapplied, so typed corrections cannot be silently omitted from the summary.
 - Six public-behavior summary tests bring `TrainerCore` to 53 passing tests. All four package suites and arm64 Simulator workspace builds for both app schemes pass.
+- A signed `TrainerApp` build from checkpoint `ffb32d5` installed and launched successfully on the connected iPhone 16 Pro Max at 2026-07-12 19:56 local time. This verifies device delivery only, not the multi-set summary acceptance behavior.
 - M2.14 remains `in_progress` pending physical multi-set summary inspection. Recurring form issues remain deliberately unavailable because issue inference/clean scoring was not added.
 
 ### M2.15 Back Squat Vertical Slice Review

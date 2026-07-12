@@ -358,7 +358,7 @@ Current boundary (2026-07-12):
 - M2.1-M2.4, M2.5a, M2.7a, M2.8, M2.11, and the bounded M2.14a in-memory summary slice are done.
 - M2.5-M2.7, M2.9, M2.10, M2.12, and parent M2.14 have implementation in the working tree but retain documented UX/device, clean-evidence, or manual-summary gates.
 - M2.13 persistence has not started. The M2.14a summary remains transient and disappears after leaving the ended session.
-- The current installed device build predates M2.11/M2.5a/M2.7a/M2.14a. Latest code is package-tested and arm64 Simulator workspace-build verified only; the physical Stop/review/edit/discard/summary gates remain open.
+- Checkpoint `ffb32d5`, including M2.11/M2.5a/M2.7a/M2.14a, built, installed, and launched successfully on the connected iPhone on 2026-07-12. This is delivery verification only; the physical Stop/review/edit/discard/summary gates remain open.
 
 ## Open Questions
 

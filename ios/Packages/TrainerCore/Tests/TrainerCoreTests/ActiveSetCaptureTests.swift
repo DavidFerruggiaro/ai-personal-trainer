@@ -102,6 +102,31 @@ struct ActiveSetCaptureTests {
         #expect(capture.phase == .discarded)
     }
 
+    @Test func frozenSequenceReconcilesProvisionalCountDuringProcessing() throws {
+        var capture = ActiveSetCapture()
+        try capture.beginRecording()
+        try capture.stop()
+
+        capture.reconcileProvisionalCountedRepsAfterStop(2)
+        try capture.requestDiscard()
+
+        #expect(capture.provisionalCountedReps == 2)
+        #expect(capture.phase == .processing)
+        #expect(capture.discardConfirmationRequired)
+    }
+
+    @Test func pendingPoseEvidenceCanRequireConservativeDiscardConfirmation() throws {
+        var capture = ActiveSetCapture()
+        try capture.beginRecording()
+        try capture.stop()
+
+        try capture.requestDiscard(evidenceMayStillContainReps: true)
+
+        #expect(capture.provisionalCountedReps == 0)
+        #expect(capture.phase == .processing)
+        #expect(capture.discardConfirmationRequired)
+    }
+
     @Test func reviewDiscardUsesCanonicalDetectionWhenLiveCountWasZero() throws {
         var capture = ActiveSetCapture()
         try capture.beginRecording()

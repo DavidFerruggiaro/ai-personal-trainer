@@ -1,6 +1,6 @@
 # Native Rebuild Product Spec
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Product Vision
 
@@ -34,7 +34,7 @@ Included:
 - Local workout/session history.
 - Local video retention by default, with user controls.
 
-These are v1 target capabilities, not a claim that every item is implemented. As of M2.11, live counting/finalization/review/corrections exist in memory; real-time coaching, durable history, and video retention have not started.
+These are v1 target capabilities, not a claim that every item is implemented. As of M2.11 plus the M2.5a/M2.7a hardening slices, live counting/finalization/review/corrections exist in memory and active-set pose delivery no longer depends on SwiftUI update timing; real-time coaching, durable history, and video retention have not started.
 
 Deferred:
 
@@ -269,6 +269,8 @@ Responsibilities:
 - `PoseEstimator`: estimates normalized pose from video/camera frames.
 - `PoseStream`: app-owned sequence of normalized pose frames.
 - `SquatAnalyzer`: owns rep counting, clean-rep scoring, cue decisions, and set summaries.
+- `TrainerRuntime`: composes pose/setup/analysis runtime behavior, including optional setup evidence and bounded active-set pose ingestion, without adding pose dependencies to `TrainerCore`.
+- `TrainerCore`: Foundation-only session, setup, capture-lifecycle, finalized-summary, correction, and review-discard domain state.
 - UI: displays state and collects user input; does not own analysis logic.
 
 Canonical pose format for v1:
@@ -308,6 +310,7 @@ ios/
     PoseCore/        # pose schema, estimator/live-stream contracts, export types
     SquatAnalysis/   # production rep counting plus bakeoff scoring
     TrainerCore/     # Foundation-only app/session/review domain
+    TrainerRuntime/  # pose/analysis/domain runtime composition for TrainerApp
   SquatTrainer.xcworkspace
 ```
 
@@ -319,7 +322,7 @@ MediaPipe Pose Landmarker is the selected implementation direction for the back-
 
 The selection is based on stronger prerecorded lower-body continuity and the first labeled offline score from a native MediaPipe pose export. M1.11 subsequently passed portrait physical-device live viability on separate standing and side-view bodyweight-squat artifacts. This does not certify clean-rep gates or production tracking accuracy. See `docs/bakeoff_results/2026-07-09_engine_selection.md` and `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 
-Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estimation uses `PoseEstimator`; production live capture uses the shared `LivePoseStreaming` / `LivePoseEvent` boundary in `PoseCore`. `TrainerLivePoseCamera` implements that boundary and reuses the portrait orientation contract proven by `PoseBakeoff`.
+Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estimation uses `PoseEstimator`; production live capture uses the shared `LivePoseStreaming` / `LivePoseEvent` boundary in `PoseCore`. `TrainerLivePoseCamera` implements that boundary and reuses the portrait orientation contract proven by `PoseBakeoff`. `TrainerRuntime` consumes ordered observations directly for setup, preview, and bounded active-set analysis; SwiftUI observes published display state but is not a pose-delivery mechanism.
 
 ## Milestones
 
@@ -341,13 +344,13 @@ Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estima
 6. Training Intelligence Foundation
    Trends, quality history, better defaults, lightweight next-set suggestions, and groundwork for future programming recommendations.
 
-Current boundary (2026-07-11):
+Current boundary (2026-07-12):
 
 - M1 is complete enough to support M2: MediaPipe is selected and portrait live viability passed.
-- M2.1-M2.4, M2.8, and M2.11 are done.
+- M2.1-M2.4, M2.5a, M2.7a, M2.8, and M2.11 are done.
 - M2.5-M2.7, M2.9, M2.10, and M2.12 have implementation in the working tree but retain documented UX/device or clean-evidence gates.
 - M2.13 persistence and M2.14 session summary have not started.
-- The current installed device build predates M2.11; latest M2.11 code is package-tested and Simulator-build verified only.
+- The current installed device build predates M2.11/M2.5a/M2.7a. Latest code is package-tested and arm64 Simulator workspace-build verified only; the physical Stop/review/edit/discard gates remain open.
 
 ## Open Questions
 

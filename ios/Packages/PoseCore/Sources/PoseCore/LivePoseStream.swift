@@ -11,10 +11,16 @@ public enum LivePoseStreamState: Equatable, Sendable {
 public struct LivePoseObservation: Equatable, Sendable {
     public let frame: PoseFrame
     public let inferenceLatencyMilliseconds: Double
+    public let sourceSequenceNumber: UInt64
 
-    public init(frame: PoseFrame, inferenceLatencyMilliseconds: Double) {
+    public init(
+        frame: PoseFrame,
+        inferenceLatencyMilliseconds: Double,
+        sourceSequenceNumber: UInt64 = 0
+    ) {
         self.frame = frame
         self.inferenceLatencyMilliseconds = inferenceLatencyMilliseconds
+        self.sourceSequenceNumber = sourceSequenceNumber
     }
 }
 
@@ -23,6 +29,7 @@ public enum LivePoseEvent: Equatable, Sendable {
     case observation(LivePoseObservation)
     case captureDropped
     case inferenceFailed(String)
+    case deliveryBoundary(UUID)
 }
 
 public protocol LivePoseStreaming: AnyObject {

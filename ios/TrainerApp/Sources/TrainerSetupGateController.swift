@@ -1,20 +1,40 @@
 import CoreMotion
 import PoseCore
 import TrainerCore
+import TrainerRuntime
 
 @MainActor
 final class TrainerSetupGateController: ObservableObject {
-    let camera = TrainerLivePoseCamera()
+    let camera: TrainerLivePoseCamera
 
     @Published private(set) var assessment = SetupGateAssessment.pending
     @Published private(set) var latestPoseFrame: PoseFrame?
     @Published private(set) var streamState: LivePoseStreamState = .idle
     @Published private(set) var captureDroppedFrames = 0
+    @Published private(set) var eventDeliveryDroppedFrames = 0
+    @Published private(set) var activeSetPoseStatus = ActiveSetPoseIngestion().status
+    @Published private(set) var activeSetPoseFailure: ActiveSetPoseIngestionError?
 
-    private let evidenceExtractor = PoseSetupEvidenceExtractor()
     private let motionMonitor = PhoneStabilityMonitor()
-    private var signalWindow = SetupGateSignalWindow()
+    private var posePipeline = TrainerPoseObservationPipeline()
     private var eventTask: Task<Void, Never>?
+    private var boundaryContinuations: [
+        UUID: CheckedContinuation<ActiveSetPoseSequence, Error>
+    ] = [:]
+    private var activeSetDeliveryDropBaseline: UInt64 = 0
+
+    init(camera: TrainerLivePoseCamera = TrainerLivePoseCamera()) {
+        self.camera = camera
+        camera.setEventDeliveryDropHandler { [weak self] droppedCount in
+            Task { @MainActor in
+                guard let self else { return }
+                self.handleEventDeliveryDrop(droppedCount)
+                self.camera.completeEventDeliveryDropNotification(
+                    through: droppedCount
+                )
+            }
+        }
+    }
 
     var statusText: String {
         switch streamState {
@@ -32,16 +52,14 @@ final class TrainerSetupGateController: ObservableObject {
     }
 
     func start() {
-        guard eventTask == nil else {
-            camera.start()
-            return
-        }
         motionMonitor.start()
-        eventTask = Task { [weak self] in
-            guard let self else { return }
-            for await event in camera.events {
-                guard !Task.isCancelled else { break }
-                handle(event)
+        if eventTask == nil {
+            eventTask = Task { [weak self] in
+                guard let self else { return }
+                for await event in camera.events {
+                    guard !Task.isCancelled else { break }
+                    handle(event)
+                }
             }
         }
         camera.start()
@@ -50,16 +68,60 @@ final class TrainerSetupGateController: ObservableObject {
     func stop() {
         camera.stop()
         motionMonitor.stop()
+    }
+
+    func shutdown() {
+        stop()
         eventTask?.cancel()
         eventTask = nil
+        let pendingContinuations = Array(boundaryContinuations.values)
+        boundaryContinuations.removeAll()
+        for continuation in pendingContinuations {
+            continuation.resume(throwing: ActiveSetPoseIngestionError.invalidPhase)
+        }
     }
 
     func resetEvidence() {
-        signalWindow.reset()
+        posePipeline.resetSetupEvidence()
         motionMonitor.reset()
-        assessment = .pending
+        assessment = posePipeline.setupAssessment
         latestPoseFrame = nil
         captureDroppedFrames = 0
+        eventDeliveryDroppedFrames = 0
+    }
+
+    func beginActiveSetPoseIngestion() throws {
+        let deliveryBaseline = camera.activeSetDeliveryBaseline
+        try posePipeline.beginActiveSet(
+            afterSourceSequence: deliveryBaseline.latestObservationSequence
+        )
+        activeSetDeliveryDropBaseline = deliveryBaseline.eventDeliveryDropCount
+        activeSetPoseStatus = posePipeline.activeSetPoseStatus
+        activeSetPoseFailure = nil
+    }
+
+    func freezeActiveSetPoseSequence() async throws -> ActiveSetPoseSequence {
+        let boundaryID = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                guard !Task.isCancelled else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                boundaryContinuations[boundaryID] = continuation
+                camera.enqueueDeliveryBoundary(boundaryID)
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancelDeliveryBoundary(boundaryID)
+            }
+        }
+    }
+
+    func discardActiveSetPoseIngestion() {
+        posePipeline.discardActiveSet()
+        activeSetPoseStatus = posePipeline.activeSetPoseStatus
+        activeSetPoseFailure = nil
     }
 
     private func handle(_ event: LivePoseEvent) {
@@ -67,19 +129,70 @@ final class TrainerSetupGateController: ObservableObject {
         case let .stateChanged(state):
             streamState = state
         case let .observation(observation):
-            latestPoseFrame = observation.frame
-            let evidence = evidenceExtractor.evidence(from: observation.frame)
-            signalWindow.observe(SetupGateSignalSample(
-                fullBodyVisible: evidence.fullBodyVisible,
-                sideViewLikely: evidence.sideViewLikely ?? false,
-                phoneStable: motionMonitor.isStable,
-                poseConfidenceOK: evidence.poseConfidenceOK
-            ))
-            assessment = signalWindow.assessment
+            do {
+                let output = try posePipeline.observe(
+                    observation,
+                    phoneStable: motionMonitor.isStable
+                )
+                latestPoseFrame = output.latestPoseFrame
+                assessment = output.setupAssessment
+                activeSetPoseStatus = output.activeSetPoseStatus
+            } catch let error as ActiveSetPoseIngestionError {
+                activeSetPoseStatus = posePipeline.activeSetPoseStatus
+                activeSetPoseFailure = error
+            } catch {
+                assertionFailure("Unexpected pose observation pipeline error: \(error)")
+            }
         case .captureDropped:
             captureDroppedFrames += 1
         case .inferenceFailed:
             break
+        case let .deliveryBoundary(id):
+            finishDeliveryBoundary(id)
+        }
+    }
+
+    private func handleEventDeliveryDrop(_ droppedCount: UInt64) {
+        eventDeliveryDroppedFrames = Int(droppedCount)
+        let activeSetDeliveryWasAffected = droppedCount > activeSetDeliveryDropBaseline
+        if activeSetDeliveryWasAffected,
+           posePipeline.activeSetPosePhase == .recording {
+            activeSetPoseStatus = posePipeline.invalidateActiveSetForEventDeliveryDrop()
+            activeSetPoseFailure = .eventDeliveryDropped
+        }
+
+        guard activeSetDeliveryWasAffected else {
+            return
+        }
+        let pendingContinuations = Array(boundaryContinuations.values)
+        boundaryContinuations.removeAll()
+        for continuation in pendingContinuations {
+            continuation.resume(throwing: ActiveSetPoseIngestionError.eventDeliveryDropped)
+        }
+    }
+
+    private func cancelDeliveryBoundary(_ id: UUID) {
+        boundaryContinuations.removeValue(forKey: id)?.resume(
+            throwing: CancellationError()
+        )
+    }
+
+    private func finishDeliveryBoundary(_ id: UUID) {
+        guard let continuation = boundaryContinuations.removeValue(forKey: id) else {
+            return
+        }
+        guard camera.eventDeliveryDropCount == activeSetDeliveryDropBaseline else {
+            activeSetPoseStatus = posePipeline.invalidateActiveSetForEventDeliveryDrop()
+            activeSetPoseFailure = .eventDeliveryDropped
+            continuation.resume(throwing: ActiveSetPoseIngestionError.eventDeliveryDropped)
+            return
+        }
+        do {
+            let sequence = try posePipeline.stopActiveSet()
+            activeSetPoseStatus = posePipeline.activeSetPoseStatus
+            continuation.resume(returning: sequence)
+        } catch {
+            continuation.resume(throwing: error)
         }
     }
 }

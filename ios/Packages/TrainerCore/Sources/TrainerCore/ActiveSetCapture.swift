@@ -73,6 +73,14 @@ public struct ActiveSetCapture: Equatable, Sendable {
         phase = .processing
     }
 
+    /// Reconciles the live count after the app runtime drains its ordered Stop boundary.
+    public mutating func reconcileProvisionalCountedRepsAfterStop(_ count: Int) {
+        guard phase == .processing, count >= 0 else {
+            return
+        }
+        provisionalCountedReps = max(provisionalCountedReps, count)
+    }
+
     public mutating func finishProcessing(finalizedCountedReps: Int) throws {
         guard phase == .processing, finalizedCountedReps >= 0 else {
             throw ActiveSetCaptureError.invalidPhase
@@ -95,7 +103,9 @@ public struct ActiveSetCapture: Equatable, Sendable {
         phase = .processing
     }
 
-    public mutating func requestDiscard() throws {
+    public mutating func requestDiscard(
+        evidenceMayStillContainReps: Bool = false
+    ) throws {
         switch phase {
         case .recording, .processing, .processingFailed, .awaitingReview:
             break
@@ -103,7 +113,8 @@ public struct ActiveSetCapture: Equatable, Sendable {
             throw ActiveSetCaptureError.invalidPhase
         }
 
-        if (finalizedCountedReps ?? provisionalCountedReps) > 0 {
+        if evidenceMayStillContainReps
+            || (finalizedCountedReps ?? provisionalCountedReps) > 0 {
             discardConfirmationRequired = true
         } else {
             phase = .discarded

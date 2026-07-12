@@ -2,6 +2,7 @@ import PoseCore
 import SquatAnalysis
 import SwiftUI
 import TrainerCore
+import TrainerRuntime
 
 struct TrainerRootView: View {
     var body: some View {
@@ -86,8 +87,7 @@ private struct BackSquatQuickSessionView: View {
     @State private var countdown = PreSetCountdown()
     @State private var startArming = StartSetArming()
     @State private var activeCapture = ActiveSetCapture()
-    @State private var squatAnalyzer = SquatAnalyzer()
-    @State private var retainedPoseFrames: [PoseFrame] = []
+    @State private var retainedPoseSequence: ActiveSetPoseSequence?
     @State private var reviewedSet: CompletedSetSummary?
     @State private var isEditingReview = false
     @State private var reviewLoadText = ""
@@ -97,6 +97,7 @@ private struct BackSquatQuickSessionView: View {
     @State private var reviewEditError: String?
     @State private var processingError: String?
     @State private var countdownTask: Task<Void, Never>?
+    @State private var captureStopTask: Task<Void, Never>?
     @State private var processingTask: Task<Void, Never>?
     @State private var showWeakSetupOption = false
     @StateObject private var setupController = TrainerSetupGateController()
@@ -254,20 +255,18 @@ private struct BackSquatQuickSessionView: View {
         }
         .onDisappear {
             countdownTask?.cancel()
+            captureStopTask?.cancel()
             processingTask?.cancel()
             cues.stop()
-            setupController.stop()
-        }
-        .onChange(of: setupController.latestPoseFrame?.timestampSeconds) { _, _ in
-            guard activeCapture.isRecording,
-                  let frame = setupController.latestPoseFrame else { return }
-            retainedPoseFrames.append(frame)
-            activeCapture.observeFrame()
-            let update = squatAnalyzer.observe(frame: frame)
-            activeCapture.updateProvisionalCountedReps(update.provisionalCountedReps)
+            setupController.discardActiveSetPoseIngestion()
+            setupController.shutdown()
         }
         .onChange(of: setupController.assessment) { _, _ in
             tryBeginArmedCountdownIfReady()
+        }
+        .onChange(of: setupController.activeSetPoseFailure) { _, failure in
+            guard let failure else { return }
+            handleActiveSetPoseIngestionFailure(failure)
         }
     }
 
@@ -366,7 +365,7 @@ private struct BackSquatQuickSessionView: View {
 
     private var cameraStatusBanner: String {
         if isCapturingSet {
-            return "Recording · \(activeCapture.framesObserved) frames"
+            return "Recording · \(setupController.activeSetPoseStatus.framesObserved) frames"
         }
         if startArming.isArmed {
             let passing = setupController.assessment.checks.filter { $0.status == .passing }.count
@@ -415,7 +414,7 @@ private struct BackSquatQuickSessionView: View {
                     Text("Provisional reps")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text("\(activeCapture.provisionalCountedReps)")
+                    Text("\(setupController.activeSetPoseStatus.provisionalCountedReps)")
                         .font(.system(size: 72, weight: .bold, design: .rounded))
                         .monospacedDigit()
                     Text("Live count is provisional. Final counted and clean reps come after the set.")
@@ -451,7 +450,9 @@ private struct BackSquatQuickSessionView: View {
                 ProgressView()
                 Text("Processing set…")
                     .font(.headline)
-                Text("Finalizing counted reps from \(retainedPoseFrames.count) retained pose frames.")
+                Text(retainedPoseSequence.map {
+                    "Finalizing counted reps from \($0.frames.count) retained pose frames."
+                } ?? "Freezing the emitted active-set pose sequence…")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -478,7 +479,9 @@ private struct BackSquatQuickSessionView: View {
                 Text(processingError ?? "The full-sequence analysis did not finish.")
                     .foregroundStyle(.secondary)
 
-                Text("No set result was saved. Retry with the retained frames or discard this capture.")
+                Text(retainedPoseSequence == nil
+                     ? "No trustworthy sequence remains. Discard this capture and retry the set."
+                     : "No set result was saved. Retry with the retained frames or discard this capture.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
@@ -491,11 +494,13 @@ private struct BackSquatQuickSessionView: View {
                         }
                         .buttonStyle(.bordered)
 
-                        Button("Retry Finalization") {
-                            retryFinalization()
+                        if retainedPoseSequence != nil {
+                            Button("Retry Finalization") {
+                                retryFinalization()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .frame(maxWidth: .infinity)
                     }
                 }
             }
@@ -1178,12 +1183,17 @@ private struct BackSquatQuickSessionView: View {
 
     private func beginActiveCapture() {
         do {
-            squatAnalyzer.reset()
-            retainedPoseFrames.removeAll(keepingCapacity: true)
+            try setupController.beginActiveSetPoseIngestion()
+            do {
+                try activeCapture.beginRecording()
+            } catch {
+                setupController.discardActiveSetPoseIngestion()
+                throw error
+            }
+            retainedPoseSequence = nil
             reviewedSet = nil
             resetReviewEditor()
             processingError = nil
-            try activeCapture.beginRecording()
             countdown.reset()
         } catch {
             assertionFailure("Countdown ready should transition into active capture once: \(error)")
@@ -1192,15 +1202,56 @@ private struct BackSquatQuickSessionView: View {
 
     private func stopActiveSet() {
         do {
+            activeCapture.updateProvisionalCountedReps(
+                setupController.activeSetPoseStatus.provisionalCountedReps
+            )
             try activeCapture.stop()
             setupController.stop()
-            finalizeRetainedPoseSequence()
+            captureStopTask?.cancel()
+            captureStopTask = Task { @MainActor in
+                do {
+                    let sequence = try await setupController.freezeActiveSetPoseSequence()
+                    guard !Task.isCancelled, activeCapture.phase == .processing else {
+                        return
+                    }
+                    activeCapture.reconcileProvisionalCountedRepsAfterStop(
+                        sequence.provisionalCountedReps
+                    )
+                    retainedPoseSequence = sequence
+                    finalizeRetainedPoseSequence()
+                } catch let error as ActiveSetPoseIngestionError {
+                    guard !Task.isCancelled, activeCapture.phase == .processing else {
+                        return
+                    }
+                    retainedPoseSequence = nil
+                    processingError = switch error {
+                    case .eventDeliveryDropped:
+                        "Live pose delivery could not remain lossless. Partial evidence was discarded."
+                    case .retentionLimitExceeded:
+                        "Capture exceeded the active-set in-memory safety limit. Partial evidence was discarded."
+                    case .invalidPhase:
+                        "The active-set pose sequence could not be frozen. Partial evidence was discarded."
+                    }
+                    try? activeCapture.failProcessing()
+                } catch {
+                    guard !Task.isCancelled, activeCapture.phase == .processing else {
+                        return
+                    }
+                    retainedPoseSequence = nil
+                    processingError = "The active-set pose sequence could not be frozen. Partial evidence was discarded."
+                    try? activeCapture.failProcessing()
+                }
+            }
         } catch {
             assertionFailure("Stop should only be available while recording: \(error)")
         }
     }
 
     private func retryFinalization() {
+        guard retainedPoseSequence != nil else {
+            assertionFailure("Retry requires a retained active-set pose sequence")
+            return
+        }
         do {
             try activeCapture.retryProcessing()
             processingError = nil
@@ -1211,10 +1262,17 @@ private struct BackSquatQuickSessionView: View {
     }
 
     private func finalizeRetainedPoseSequence() {
+        guard let retainedPoseSequence else {
+            processingError = "No retained pose sequence is available for finalization."
+            if activeCapture.phase == .processing {
+                try? activeCapture.failProcessing()
+            }
+            return
+        }
         processingTask?.cancel()
-        let frames = retainedPoseFrames
-        let provisionalCountedReps = activeCapture.provisionalCountedReps
-        let configuration = squatAnalyzer.configuration
+        let frames = retainedPoseSequence.frames
+        let provisionalCountedReps = retainedPoseSequence.provisionalCountedReps
+        let configuration = retainedPoseSequence.analyzerConfiguration
 
         processingTask = Task { @MainActor in
             let result = await Task.detached(priority: .userInitiated) {
@@ -1237,13 +1295,42 @@ private struct BackSquatQuickSessionView: View {
                 )
                 reviewedSet = completedSet
                 processingError = nil
-                retainedPoseFrames.removeAll(keepingCapacity: false)
+                self.retainedPoseSequence = nil
             } catch {
                 processingError = "The retained sequence could not be converted into a review result."
                 if activeCapture.phase == .processing {
                     try? activeCapture.failProcessing()
                 }
             }
+        }
+    }
+
+    private func handleActiveSetPoseIngestionFailure(
+        _ failure: ActiveSetPoseIngestionError
+    ) {
+        guard activeCapture.phase == .recording else {
+            return
+        }
+
+        activeCapture.updateProvisionalCountedReps(
+            setupController.activeSetPoseStatus.provisionalCountedReps
+        )
+        retainedPoseSequence = nil
+        setupController.stop()
+
+        do {
+            try activeCapture.stop()
+            switch failure {
+            case .retentionLimitExceeded:
+                processingError = "Capture exceeded the 10-minute or 18,000-frame in-memory safety limit. Partial pose evidence was discarded."
+            case .eventDeliveryDropped:
+                processingError = "Live pose delivery could not remain lossless. Partial pose evidence was discarded."
+            case .invalidPhase:
+                processingError = "Active-set pose ingestion stopped unexpectedly. Partial pose evidence was discarded."
+            }
+            try activeCapture.failProcessing()
+        } catch {
+            assertionFailure("Pose ingestion failure should leave capture in failed processing: \(error)")
         }
     }
 
@@ -1286,8 +1373,14 @@ private struct BackSquatQuickSessionView: View {
     }
 
     private func discardActiveSet() {
+        activeCapture.updateProvisionalCountedReps(
+            setupController.activeSetPoseStatus.provisionalCountedReps
+        )
         do {
-            try activeCapture.requestDiscard()
+            try activeCapture.requestDiscard(
+                evidenceMayStillContainReps: activeCapture.phase == .processing
+                    && retainedPoseSequence == nil
+            )
             if activeCapture.phase == .discarded {
                 finishDiscardedSet()
             }
@@ -1306,6 +1399,8 @@ private struct BackSquatQuickSessionView: View {
     }
 
     private func finishDiscardedSet() {
+        captureStopTask?.cancel()
+        captureStopTask = nil
         processingTask?.cancel()
         processingTask = nil
 
@@ -1318,11 +1413,11 @@ private struct BackSquatQuickSessionView: View {
             }
         }
 
-        retainedPoseFrames.removeAll(keepingCapacity: false)
+        retainedPoseSequence = nil
         reviewedSet = nil
         resetReviewEditor()
         processingError = nil
-        squatAnalyzer.reset()
+        setupController.discardActiveSetPoseIngestion()
         activeCapture.reset()
         startArming.cancel()
         countdown.reset()
@@ -1343,13 +1438,15 @@ private struct BackSquatQuickSessionView: View {
             return
         }
 
+        captureStopTask?.cancel()
+        captureStopTask = nil
         processingTask?.cancel()
         processingTask = nil
-        retainedPoseFrames.removeAll(keepingCapacity: false)
+        retainedPoseSequence = nil
         reviewedSet = nil
         resetReviewEditor()
         processingError = nil
-        squatAnalyzer.reset()
+        setupController.discardActiveSetPoseIngestion()
         activeCapture.reset()
         startArming.cancel()
         countdown.reset()

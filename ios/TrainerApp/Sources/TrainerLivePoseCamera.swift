@@ -4,6 +4,11 @@ import PoseCore
 import UIKit
 
 final class TrainerLivePoseCamera: NSObject, ObservableObject, LivePoseStreaming {
+    struct ActiveSetDeliveryBaseline {
+        let latestObservationSequence: UInt64?
+        let eventDeliveryDropCount: UInt64
+    }
+
     let captureSession = AVCaptureSession()
     let engine = PoseEngineInfo(
         name: "mediapipe_pose_landmarker",
@@ -31,9 +36,17 @@ final class TrainerLivePoseCamera: NSObject, ObservableObject, LivePoseStreaming
     private var stopQueued = false
     private var landmarker: PoseLandmarker?
     private var startedAtUptime: TimeInterval?
+    private var nextObservationSequence: UInt64 = 1
+    private var mostRecentEmittedObservationSequence: UInt64?
+    private var eventDeliveryDropHandler: (@Sendable (UInt64) -> Void)?
+    private var eventDeliveryDropCountStorage: UInt64 = 0
+    private var eventDeliveryDropNotificationPending = false
 
     override init() {
-        let stream = AsyncStream.makeStream(of: LivePoseEvent.self)
+        let stream = AsyncStream.makeStream(
+            of: LivePoseEvent.self,
+            bufferingPolicy: .bufferingNewest(120)
+        )
         events = stream.stream
         eventContinuation = stream.continuation
         super.init()
@@ -41,6 +54,49 @@ final class TrainerLivePoseCamera: NSObject, ObservableObject, LivePoseStreaming
 
     deinit {
         eventContinuation.finish()
+    }
+
+    var activeSetDeliveryBaseline: ActiveSetDeliveryBaseline {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        return ActiveSetDeliveryBaseline(
+            latestObservationSequence: mostRecentEmittedObservationSequence,
+            eventDeliveryDropCount: eventDeliveryDropCountStorage
+        )
+    }
+
+    var eventDeliveryDropCount: UInt64 {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        return eventDeliveryDropCountStorage
+    }
+
+    func setEventDeliveryDropHandler(
+        _ handler: @escaping @Sendable (UInt64) -> Void
+    ) {
+        lifecycleLock.lock()
+        eventDeliveryDropHandler = handler
+        lifecycleLock.unlock()
+    }
+
+    func completeEventDeliveryDropNotification(through deliveredCount: UInt64) {
+        lifecycleLock.lock()
+        let shouldRenotify = eventDeliveryDropCountStorage > deliveredCount
+        let nextCount = eventDeliveryDropCountStorage
+        let handler = shouldRenotify ? eventDeliveryDropHandler : nil
+        if !shouldRenotify {
+            eventDeliveryDropNotificationPending = false
+        }
+        lifecycleLock.unlock()
+        if let handler {
+            handler(nextCount)
+        }
+    }
+
+    func enqueueDeliveryBoundary(_ id: UUID) {
+        captureQueue.async { [weak self] in
+            self?.emit(.deliveryBoundary(id))
+        }
     }
 
     func start() {
@@ -202,10 +258,40 @@ final class TrainerLivePoseCamera: NSObject, ObservableObject, LivePoseStreaming
     }
 
     private func publish(_ newState: LivePoseStreamState) {
-        eventContinuation.yield(.stateChanged(newState))
+        emit(.stateChanged(newState))
         DispatchQueue.main.async {
             self.state = newState
         }
+    }
+
+    private func emit(_ event: LivePoseEvent) {
+        switch eventContinuation.yield(event) {
+        case .enqueued, .terminated:
+            break
+        case .dropped:
+            lifecycleLock.lock()
+            eventDeliveryDropCountStorage &+= 1
+            let shouldNotify = !eventDeliveryDropNotificationPending
+                && eventDeliveryDropHandler != nil
+            if shouldNotify {
+                eventDeliveryDropNotificationPending = true
+            }
+            let droppedCount = eventDeliveryDropCountStorage
+            let handler = shouldNotify ? eventDeliveryDropHandler : nil
+            lifecycleLock.unlock()
+            handler?(droppedCount)
+        @unknown default:
+            break
+        }
+    }
+
+    private func nextSourceSequence() -> UInt64 {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        let sequence = nextObservationSequence
+        nextObservationSequence &+= 1
+        mostRecentEmittedObservationSequence = sequence
+        return sequence
     }
 }
 
@@ -234,12 +320,13 @@ extension TrainerLivePoseCamera: AVCaptureVideoDataOutputSampleBufferDelegate {
                 result,
                 timestampSeconds: Double(timestampMilliseconds) / 1_000
             )
-            eventContinuation.yield(.observation(LivePoseObservation(
+            emit(.observation(LivePoseObservation(
                 frame: frame,
-                inferenceLatencyMilliseconds: latency
+                inferenceLatencyMilliseconds: latency,
+                sourceSequenceNumber: nextSourceSequence()
             )))
         } catch {
-            eventContinuation.yield(.inferenceFailed(error.localizedDescription))
+            emit(.inferenceFailed(error.localizedDescription))
         }
     }
 
@@ -248,6 +335,6 @@ extension TrainerLivePoseCamera: AVCaptureVideoDataOutputSampleBufferDelegate {
         didDrop sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        eventContinuation.yield(.captureDropped)
+        emit(.captureDropped)
     }
 }

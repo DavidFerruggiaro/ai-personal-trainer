@@ -1,6 +1,6 @@
 # M2 Back Squat Vertical Slice Tasks
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Milestone Goal
 
@@ -52,7 +52,7 @@ Start Session
 - M2.5-M2.7, M2.9, M2.10, and M2.12 retain the physical, UX, or clean-evidence gates documented in their result sections.
 - M2.13 persistence and M2.14 session summary have not started.
 - Do not infer the next ticket from numbering alone. For offline code-only options after M2.11, use `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` and take one user-approved slice.
-- The current ranked hardening candidates are M2.5a optional side-view evidence and M2.7a lossless active-set pose ingestion. Neither has started.
+- M2.5a optional side-view evidence and M2.7a lossless active-set pose ingestion are done. The next ranked product slice is M2.14a, pending a new user choice after this batch.
 
 ## Tasks
 
@@ -373,6 +373,23 @@ Live-signal progress (2026-07-10, post-checkpoint):
 - Open UX discussion: `Arm set` wording and post-arm waiting UI (camera must stay primary).
 - M2.5 remains `in_progress` until that UX discussion is settled and override/Stop paths get a quick device pass.
 
+### M2.5a Preserve Unknown Side-View Evidence
+
+Status: done
+
+Goal:
+
+Keep unavailable side-view evidence unknown instead of counting it as a failing setup sample.
+
+Result (2026-07-12):
+
+- Added a small `TrainerRuntime` package for testable app-runtime composition without adding any dependency to Foundation-only `TrainerCore`.
+- Added `SetupGateSignalAdapter`, which preserves `PoseSetupEvidence.sideViewLikely == nil` when building the optional `TrainerCore` signal sample.
+- `TrainerSetupGateController` now uses that adapter instead of coercing unknown side-view evidence to `false`.
+- Tests cover unknown evidence remaining pending, unknown startup samples not diluting later passing evidence, and explicit `false` samples still producing a failing ratio.
+- All four Swift package suites pass. `TrainerApp` builds through `SquatTrainer.xcworkspace` for the arm64 iOS Simulator architecture; the normal dual-architecture build reached final linking but the disk filled before its universal binary could be written.
+- M2.5's physical-device and Arm-set UX gates remain open; this code-only fix does not close them.
+
 ### M2.6 Add Start Set Countdown
 
 Status: in_progress
@@ -477,6 +494,29 @@ Implementation history (2026-07-10 → 2026-07-11):
 - Physical device: countdown auto-started recording and observed ~920 frames with "Recording set" UI. Stop/Discard on-device confirmation still outstanding.
 - `TrainerCore` has 29 passing tests (includes arming + active-set suites).
 - Still open before closing M2.7: device Stop/Discard confirmation and the Arm-set/post-arm UX discussion. M2.8 analyzer-backed provisional counting is physically verified. M2.9/M2.10 review code is now implemented, but its physical pass remains open.
+
+### M2.7a Lossless Active-Set Pose Ingestion
+
+Status: done
+
+Goal:
+
+Route every emitted live-pose observation directly into active-set retention and streaming analysis without depending on SwiftUI delivery of a published latest frame.
+
+Result (2026-07-12):
+
+- Added `ActiveSetPoseIngestion` to the app-runtime package. It owns the active set's temporary pose sequence and its streaming `SquatAnalyzer`, while `TrainerCore` remains Foundation-only and pose-independent.
+- `TrainerSetupGateController` now sends each `LivePoseEvent.observation` directly to setup evidence, preview state, and (while recording) active-set ingestion in the same ordered event-consumer path.
+- Removed the SwiftUI `onChange` latest-frame delivery seam. Published pose status now drives display only; buffering and analysis have already occurred before SwiftUI observes an update.
+- Each emitted observation carries a monotonic source sequence. Starting a set takes one lock-protected snapshot of the source watermark and delivery-loss count before runtime recording begins. Stop enqueues a delivery boundary behind already-queued camera work before freezing an immutable `ActiveSetPoseSequence`; pre-start and post-boundary observations cannot enter it, and loss after the start snapshot cannot be absorbed into the baseline.
+- The camera-to-consumer event stream is bounded to 120 newest events. If delivery pressure drops an event during a set, ingestion fails closed, clears partial evidence, and requires discard instead of finalizing a sequence claimed to be complete.
+- The controller keeps one event subscription for its lifetime so ordinary Stop/Next Set cycles do not terminate the `AsyncStream` consumer. Batch finalization replays exactly the frozen sequence and preserves its streaming provisional count/configuration.
+- Discard clears the runtime buffer. Successful finalization releases the stopped snapshot; failed finalization retains it for retry.
+- Added an explicit in-memory safety policy: at most 18,000 frames or 10 minutes. Exceeding either limit clears partial evidence, prevents finalization, stops the camera, and requires discard rather than claiming a result from an incomplete sequence.
+- Fourteen runtime tests cover optional setup evidence, ordered N-frame delivery, setup/preview/active fan-out, pre-start exclusion, Stop isolation, next-set reuse, discard clearing, exact duration/empty-stop boundaries, frame-count overflow, duration overflow, and fail-closed event loss. Two additional `TrainerCore` lifecycle tests cover post-boundary provisional-count reconciliation and conservative discard confirmation while Stop evidence is still draining. All four package suites pass, and both arm64 Simulator app schemes build through the workspace.
+- Stop-boundary waits are cancellation-aware, and delivery loss resumes pending waits immediately. Delivery-drop notifications are coalesced so a saturated main actor cannot turn the fail-closed signal into a second unbounded queue.
+- "Lossless" means every observation emitted by `TrainerLivePoseCamera`; AVFoundation capture-output drops remain separately reported and are not reconstructed.
+- M2.7 remains `in_progress` until its existing Arm-set UX and physical Stop/Discard gates pass. M2.7a does not close those gates from offline tests.
 
 ### M2.8 Implement Provisional Rep Count
 

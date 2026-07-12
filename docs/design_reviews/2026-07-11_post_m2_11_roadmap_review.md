@@ -15,6 +15,13 @@ Choose bounded native-iOS work after M2.11 without pretending open physical gate
 - The installed iPhone build predates M2.11. Current Stop/review/edit behavior has not been physically verified.
 - `TrainerCore` must remain Foundation-only and independent of `PoseCore`, `SquatAnalysis`, SwiftUI, and SwiftData.
 
+## Implementation Update — 2026-07-12
+
+- Ranked candidates 1 and 2 are complete: M2.5a preserves unknown side-view evidence, and M2.7a routes ordered live observations directly into bounded active-set ingestion.
+- M2.7a uses monotonic source sequence numbers plus an explicit queued Stop boundary. A bounded live-event queue fails the set closed if delivery drops an event, rather than silently finalizing incomplete evidence.
+- Automated checks pass for all four Swift packages (`TrainerCore`: 47 tests; `TrainerRuntime`: 14 tests) and arm64 Simulator workspace builds of both app schemes. The parent M2.5-M2.7 physical/UX gates remain open.
+- The next ranked product candidate remains M2.14a. It has not started and requires a new user choice.
+
 ## Ranked Pure-Code Candidates
 
 ### 1. M2.5a Preserve Unknown Side-View Evidence

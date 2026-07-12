@@ -89,6 +89,7 @@ private struct BackSquatQuickSessionView: View {
     @State private var activeCapture = ActiveSetCapture()
     @State private var retainedPoseSequence: ActiveSetPoseSequence?
     @State private var reviewedSet: CompletedSetSummary?
+    @State private var endedSummary: QuickSessionSummary?
     @State private var isEditingReview = false
     @State private var reviewLoadText = ""
     @State private var reviewLoadUnit: LoadUnit = .defaultUnit
@@ -184,59 +185,63 @@ private struct BackSquatQuickSessionView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Quick Session")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+            if let endedSummary {
+                sessionSummaryContent(endedSummary)
+            } else {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Quick Session")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
 
-                    Text(exercise.displayName)
-                        .font(.largeTitle.bold())
+                        Text(exercise.displayName)
+                            .font(.largeTitle.bold())
 
-                    Text("Set \(displayedSetOrdinal)")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                }
+                        Text("Set \(displayedSetOrdinal)")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
 
-                HStack {
-                    Label(sessionStatusTitle, systemImage: sessionStatusIcon)
-                        .fontWeight(.semibold)
+                    HStack {
+                        Label(sessionStatusTitle, systemImage: sessionStatusIcon)
+                            .fontWeight(.semibold)
 
-                    Spacer()
+                        Spacer()
 
-                    Text("\(session.completedSets.count) completed")
-                        .foregroundStyle(.secondary)
-                }
-                .padding(16)
-                .background(sessionStatusColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
+                        Text("\(session.completedSets.count) completed")
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(16)
+                    .background(sessionStatusColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
 
-                if isCapturingSet {
-                    cameraPreview
-                    activeSetControls
-                } else if isPostCaptureFlow {
-                    activeSetControls
-                } else if isArmedOrCounting {
-                    cameraPreview
-                    countdownControls
-                    if startArming.isArmed {
+                    if isCapturingSet {
+                        cameraPreview
+                        activeSetControls
+                    } else if isPostCaptureFlow {
+                        activeSetControls
+                    } else if isArmedOrCounting {
+                        cameraPreview
+                        countdownControls
+                        if startArming.isArmed {
+                            setupGateSection
+                        }
+                    } else {
+                        preCaptureSections
+                        cameraPreview
                         setupGateSection
+                        countdownControls
                     }
-                } else {
-                    preCaptureSections
-                    cameraPreview
-                    setupGateSection
-                    countdownControls
-                }
 
-                if !isPostCaptureFlow {
-                    Button("End Quick Session", role: .destructive) {
-                        endSession()
+                    if !isPostCaptureFlow {
+                        Button("End Quick Session", role: .destructive) {
+                            endSession()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(activeCapture.phase == .recording)
                     }
-                    .buttonStyle(.bordered)
-                    .disabled(activeCapture.phase == .recording)
                 }
+                .padding()
             }
-            .padding()
         }
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
@@ -248,10 +253,12 @@ private struct BackSquatQuickSessionView: View {
                 }
             }
         }
-        .navigationTitle(exercise.displayName)
+        .navigationTitle(endedSummary == nil ? exercise.displayName : "Workout Summary")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            setupController.start()
+            if endedSummary == nil {
+                setupController.start()
+            }
         }
         .onDisappear {
             countdownTask?.cancel()
@@ -685,7 +692,11 @@ private struct BackSquatQuickSessionView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if activeCapture.discardConfirmationRequired {
+            if isEditingReview {
+                Text("Apply or cancel edits before continuing.")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            } else if activeCapture.discardConfirmationRequired {
                 discardConfirmation
             } else {
                 Button("Next Set") {
@@ -1478,10 +1489,137 @@ private struct BackSquatQuickSessionView: View {
         }
     }
 
+    private func sessionSummaryContent(
+        _ summary: QuickSessionSummary
+    ) -> some View {
+        let setNoun = summary.sets.count == 1 ? "set" : "sets"
+
+        return VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Workout complete", systemImage: "checkmark.circle.fill")
+                    .font(.title2.bold())
+                    .foregroundStyle(.green)
+
+                Text(exercise.displayName)
+                    .font(.largeTitle.bold())
+
+                if let totalCountedReps = summary.totalCountedReps {
+                    let repNoun = totalCountedReps == 1 ? "rep" : "reps"
+                    Text("\(summary.sets.count) \(setNoun) · \(totalCountedReps) counted \(repNoun)")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("\(summary.sets.count) completed \(setNoun)")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if summary.lowConfidenceCaptureCount > 0 {
+                Label(
+                    "\(summary.lowConfidenceCaptureCount) low-confidence capture\(summary.lowConfidenceCaptureCount == 1 ? "" : "s")",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Completed sets")
+                    .font(.headline)
+
+                ForEach(summary.sets) { set in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("Set \(set.ordinal)")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(summarySetResult(set))
+                                .font(.title3.bold())
+                                .monospacedDigit()
+                        }
+
+                        Text(summaryCleanResult(set.cleanResult))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
+                        switch set.captureConfidence {
+                        case .standard:
+                            EmptyView()
+                        case .low:
+                            Label("Low-confidence setup override", systemImage: "exclamationmark.triangle")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.orange)
+                        case .unavailable:
+                            Text("Capture confidence unavailable")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(14)
+                    .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Form trends")
+                    .font(.headline)
+                Text("Recurring form issues aren’t available yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+
+            Button("Done") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+        }
+        .padding()
+    }
+
+    private func summarySetResult(_ set: SessionSetSummary) -> String {
+        let count = set.countedReps.map(String.init) ?? "—"
+        return "\(formattedLoad(set.load)) × \(count)"
+    }
+
+    private func summaryCleanResult(_ result: ReviewedSetCleanResult?) -> String {
+        switch result {
+        case let .analyzerAssessed(cleanReps):
+            "\(cleanReps) clean · analyzer assessed"
+        case let .userCorrected(cleanReps):
+            "\(cleanReps) clean · user corrected"
+        case .unavailable:
+            "Clean reps unavailable"
+        case .none:
+            "Rep analysis unavailable"
+        }
+    }
+
     private func endSession() {
         do {
-            try session.end()
-            dismiss()
+            let summary = try session.end()
+            countdownTask?.cancel()
+            countdownTask = nil
+            captureStopTask?.cancel()
+            captureStopTask = nil
+            processingTask?.cancel()
+            processingTask = nil
+            cues.stop()
+            setupController.discardActiveSetPoseIngestion()
+            setupController.shutdown()
+
+            if summary.sets.isEmpty {
+                dismiss()
+            } else {
+                endedSummary = summary
+            }
         } catch {
             assertionFailure("An active quick session should end once: \(error)")
         }

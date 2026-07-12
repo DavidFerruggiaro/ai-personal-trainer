@@ -43,16 +43,17 @@ Start Session
 -> Stop
 -> Processing Set
 -> Auto-Saved Post-Set Review
--> Next Set
+-> Next Set -> Countdown (loop)
+or End Workout -> Workout Summary -> Done
 ```
 
 ## Current Execution Boundary
 
-- M2.1-M2.4, M2.8, and M2.11 are done.
-- M2.5-M2.7, M2.9, M2.10, and M2.12 retain the physical, UX, or clean-evidence gates documented in their result sections.
-- M2.13 persistence and M2.14 session summary have not started.
+- M2.1-M2.4, M2.5a, M2.7a, M2.8, M2.11, and M2.14a are done.
+- M2.5-M2.7, M2.9, M2.10, M2.12, and parent M2.14 retain the physical, UX, or clean-evidence gates documented in their result sections.
+- M2.13 persistence has not started; the M2.14a summary is transient and in memory only.
 - Do not infer the next ticket from numbering alone. For offline code-only options after M2.11, use `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` and take one user-approved slice.
-- M2.5a optional side-view evidence and M2.7a lossless active-set pose ingestion are done. The next ranked product slice is M2.14a, pending a new user choice after this batch.
+- M2.5a optional side-view evidence, M2.7a lossless active-set pose ingestion, and M2.14a in-memory session summary are done. The ranked process-only option is the native verification harness; take another bounded hardening ticket only after a new user choice.
 
 ## Tasks
 
@@ -745,7 +746,7 @@ Historical starting guardrails (2026-07-11; implemented in the result below):
 - Enforce nonnegative counts and `clean <= counted`. Reject impossible edits with clear validation; do not silently clamp values or turn unavailable clean evidence into zero.
 - Preserve correction metadata sufficient for later persistence: timestamp, field, previous user-facing value, new value, and `user_edit` reason.
 - Use TDD one behavior at a time through public `TrainerCore` APIs, then add the smallest compact edit affordance to the existing review. No explicit Save Set action should reappear; applying an edit updates the in-memory reviewed set.
-- Automated completion target: focused correction tests, all three package suites, and the `TrainerApp` workspace Simulator build. Physical edit-flow inspection can remain a follow-up.
+- Automated completion target: focused correction tests, all four package suites, and the `TrainerApp` workspace Simulator build. Physical edit-flow inspection can remain a follow-up.
 
 Result (2026-07-11):
 
@@ -847,7 +848,7 @@ Documentation updates:
 
 ### M2.14 Add Session Summary
 
-Status: pending
+Status: in_progress
 
 Goal:
 
@@ -883,6 +884,40 @@ Files likely touched:
 Documentation updates:
 
 - Record summary fields.
+
+### M2.14a Add In-Memory Session Summary Projection
+
+Status: done
+
+Goal:
+
+Derive and present a concise transient workout summary from the current quick session without starting persistence or inventing unavailable form conclusions.
+
+Scoped behavior:
+
+- Project only completed, non-discarded sets.
+- Use corrected load, counted-rep, and clean-rep values while preserving analyzer, user-corrected, and unavailable clean evidence.
+- Preserve ordered set rows and low-confidence setup overrides.
+- Keep mixed load units separate; do not calculate a cross-unit volume total.
+- Show the projection in a minimal in-memory end-workout screen.
+- Do not add history, persistence, charts, issue inference, quality scoring, or programming suggestions.
+
+Verification:
+
+- Public-behavior `TrainerCore` tests for corrected sets, discarded sets, clean evidence, low-confidence captures, and empty sessions.
+- `TrainerApp` workspace Simulator build.
+- Manual multi-set summary inspection remains required before closing M2.14.
+
+Result (2026-07-12):
+
+- `QuickSession.end()` now atomically returns an immutable `QuickSessionSummary` with exact session timestamps and ordered completed-set rows.
+- Each row uses current corrected load/count/clean values while preserving analyzer-assessed, user-corrected, unavailable, and missing evidence as distinct states. Original analyzer/load evidence and correction logs remain unchanged.
+- Discarded sets and the unfinished current draft are excluded. Passed, overridden, and missing setup outcomes map to standard, low, and unavailable capture confidence.
+- Counted reps are totaled only when every completed row has count evidence. Per-set decimal lb/kg loads remain exact; no mixed-unit volume total or conversion was added.
+- Ending a nonempty session now shuts down capture and replaces the workout in place with a concise transient summary: set rows, clean evidence, counted total, low-confidence count, honest unavailable form-trend copy, and `Done`. Empty sessions still dismiss directly.
+- Review `Next Set`, `Discard`, and `End Workout` actions are withheld while edits are unapplied, so typed corrections cannot be silently omitted from the summary.
+- Six public-behavior summary tests bring `TrainerCore` to 53 passing tests. All four package suites and arm64 Simulator workspace builds for both app schemes pass.
+- M2.14 remains `in_progress` pending physical multi-set summary inspection. Recurring form issues remain deliberately unavailable because issue inference/clean scoring was not added.
 
 ### M2.15 Back Squat Vertical Slice Review
 

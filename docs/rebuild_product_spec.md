@@ -34,7 +34,7 @@ Included:
 - Local workout/session history.
 - Local video retention by default, with user controls.
 
-These are v1 target capabilities, not a claim that every item is implemented. As of M2.11 plus the M2.5a/M2.7a hardening slices, live counting/finalization/review/corrections exist in memory and active-set pose delivery no longer depends on SwiftUI update timing; real-time coaching, durable history, and video retention have not started.
+These are v1 target capabilities, not a claim that every item is implemented. As of M2.14a, live counting/finalization/review/corrections and a concise workout-end summary exist in memory, and active-set pose delivery no longer depends on SwiftUI update timing; real-time coaching, durable history, and video retention have not started.
 
 Deferred:
 
@@ -192,6 +192,14 @@ At workout end, show a concise strength-training summary:
 
 Do not prioritize social-share graphics, calories, or generic wellness summaries.
 
+Current implementation (M2.14a):
+
+- Ending a nonempty quick session creates an immutable in-memory summary and replaces the workout screen until the user taps `Done`.
+- Ordered set rows use corrected load, counted reps, and provenance-aware clean evidence. Discarded sets and the unfinished draft are excluded.
+- The summary shows counted-rep total only when every set has count evidence and separately reports setup overrides as low-confidence captures.
+- Per-set lb/kg values remain separate. No cross-unit volume, persistence, history, charts, issue inference, or programming recommendation is present.
+- Recurring form trends remain explicitly unavailable rather than being inferred from missing clean-gate evidence.
+
 ## Corrections And Discard
 
 V1 should support lightweight corrections for trust and data quality:
@@ -347,10 +355,10 @@ Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estima
 Current boundary (2026-07-12):
 
 - M1 is complete enough to support M2: MediaPipe is selected and portrait live viability passed.
-- M2.1-M2.4, M2.5a, M2.7a, M2.8, and M2.11 are done.
-- M2.5-M2.7, M2.9, M2.10, and M2.12 have implementation in the working tree but retain documented UX/device or clean-evidence gates.
-- M2.13 persistence and M2.14 session summary have not started.
-- The current installed device build predates M2.11/M2.5a/M2.7a. Latest code is package-tested and arm64 Simulator workspace-build verified only; the physical Stop/review/edit/discard gates remain open.
+- M2.1-M2.4, M2.5a, M2.7a, M2.8, M2.11, and the bounded M2.14a in-memory summary slice are done.
+- M2.5-M2.7, M2.9, M2.10, M2.12, and parent M2.14 have implementation in the working tree but retain documented UX/device, clean-evidence, or manual-summary gates.
+- M2.13 persistence has not started. The M2.14a summary remains transient and disappears after leaving the ended session.
+- The current installed device build predates M2.11/M2.5a/M2.7a/M2.14a. Latest code is package-tested and arm64 Simulator workspace-build verified only; the physical Stop/review/edit/discard/summary gates remain open.
 
 ## Open Questions
 

@@ -19,8 +19,8 @@ Choose bounded native-iOS work after M2.11 without pretending open physical gate
 
 - Ranked candidates 1 and 2 are complete: M2.5a preserves unknown side-view evidence, and M2.7a routes ordered live observations directly into bounded active-set ingestion.
 - M2.7a uses monotonic source sequence numbers plus an explicit queued Stop boundary. A bounded live-event queue fails the set closed if delivery drops an event, rather than silently finalizing incomplete evidence.
-- Automated checks pass for all four Swift packages (`TrainerCore`: 47 tests; `TrainerRuntime`: 14 tests) and arm64 Simulator workspace builds of both app schemes. The parent M2.5-M2.7 physical/UX gates remain open.
-- The next ranked product candidate remains M2.14a. It has not started and requires a new user choice.
+- Automated checks pass for all four Swift packages (`TrainerCore`: 53 tests; `TrainerRuntime`: 14 tests) and arm64 Simulator workspace builds of both app schemes. The parent M2.5-M2.7 physical/UX gates remain open.
+- Ranked candidate 3, M2.14a, is now complete: `QuickSession.end()` returns a corrected-evidence summary snapshot and `TrainerApp` renders a minimal transient end-workout summary. It adds no persistence, volume conversion, issue inference, or clean scoring. Parent M2.14 retains its physical multi-set inspection gate.
 
 ## Ranked Pure-Code Candidates
 
@@ -51,7 +51,7 @@ Behavior-first checks:
 
 Verification:
 
-- All three package suites.
+- All four package suites.
 - `TrainerApp` workspace Simulator build.
 - Leave M2.5's physical gate open.
 
@@ -118,7 +118,7 @@ Recommendation: safest process improvement.
 
 Goal:
 
-- Add one script that runs all three package suites and both workspace Simulator builds.
+- Add one script that runs all four package suites and both workspace Simulator builds.
 - Optionally support a package-only quick mode.
 
 Why this is safe:
@@ -231,8 +231,8 @@ A formal security review has limited value before persistence, retained video, n
 
 ## Recommendation
 
-Take **M2.5a Preserve Unknown Side-View Evidence** first because it is a small confirmed setup-quality bug. Then take **M2.7a Lossless Active-Set Pose Ingestion** before relying on more device accuracy results.
+The three ranked product candidates are complete: **M2.5a Preserve Unknown Side-View Evidence**, **M2.7a Lossless Active-Set Pose Ingestion**, and **M2.14a Foundation-Only Session Summary Projection**.
 
-For feature progress after those hardening slices, take **M2.14a Foundation-Only Session Summary Projection**. If no runtime code should change, add the **Native iOS Verification Harness**.
+The next process-only option is the **Native iOS Verification Harness**. Analysis-summary mapping and M2.11a atomic edits are the next bounded code-hardening candidates, but require a new user choice. Physical-device gates on the parent tickets remain open.
 
-Take one ticket only, use TDD, run all three package suites plus the `TrainerApp` workspace build, update repo memory, and stop before the next ticket.
+Take one ticket only, use TDD where behavior is crisp, run all four package suites plus the relevant workspace builds, update repo memory, and stop before the next ticket.

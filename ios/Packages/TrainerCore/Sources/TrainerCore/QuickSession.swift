@@ -378,11 +378,15 @@ public struct QuickSession: Equatable, Identifiable, Sendable {
         )
     }
 
-    public mutating func end(at endedAt: Date = Date()) throws {
+    @discardableResult
+    public mutating func end(
+        at endedAt: Date = Date()
+    ) throws -> QuickSessionSummary {
         guard isActive else {
             throw QuickSessionError.sessionEnded
         }
 
         self.endedAt = endedAt
+        return QuickSessionSummary(session: self, endedAt: endedAt)
     }
 }

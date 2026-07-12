@@ -154,7 +154,7 @@ Use now:
 6. Agent updates docs and decision log.
 7. Agent stops or asks for approval before the next ticket.
 
-Xcode is installed, all three package suites pass, and both apps build through `ios/SquatTrainer.xcworkspace`. Current work should still use one bounded ticket per loop because the working tree after `9eaeae3` is large and several M2 tickets retain physical gates.
+Xcode is installed, all four package suites pass, and both apps build through `ios/SquatTrainer.xcworkspace`. Current work should still use one bounded ticket per loop because several M2 tickets retain physical gates.
 
 ### Fresh Chat Loop
 
@@ -210,10 +210,10 @@ Agents must not:
 
 ## Near-Term Action Plan
 
-1. Start from the latest branch checkpoint, which includes the M2.11 product/docs batch and intentionally excludes `.agents/` and `skills-lock.json`.
-2. At the next device session, close or update the physical gates for M2.5-M2.7, M2.9, M2.10, M2.11 UI, and M2.12.
+1. Start from the latest branch checkpoint, which includes M2.5a, M2.7a, M2.11, and M2.14a and intentionally excludes `.agents/` and `skills-lock.json`.
+2. At the next device session, close or update the physical gates for M2.5-M2.7, M2.9, M2.10, M2.11 UI, M2.12, and the parent M2.14 summary.
 3. For offline work, choose exactly one bounded ticket from `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
-4. Run the three Swift package suites and the relevant workspace build.
+4. Run the four Swift package suites and the relevant workspace builds.
 5. Update the task file, handoff, README, and decision log.
 6. Stop and ask before the next ticket.
 

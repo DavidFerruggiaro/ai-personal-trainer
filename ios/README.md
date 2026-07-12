@@ -5,10 +5,10 @@ This folder contains the native iOS rebuild skeleton for the AI Personal Trainer
 The current Python/Streamlit app remains the reference prototype. The native rebuild starts here and is split into:
 
 - `PoseBakeoff/`: internal measurement app for comparing pose engines.
-- `TrainerApp/`: user-facing Back Squat quick-session app with live setup, arming, countdown, active capture, provisional count, full-sequence finalization, post-set review, and compact result correction.
+- `TrainerApp/`: user-facing Back Squat quick-session app with live setup, arming, countdown, active capture, provisional count, full-sequence finalization, post-set review, compact result correction, and a transient end-workout summary.
 - `Packages/PoseCore/`: shared pose schema, estimator/live-stream contracts, setup evidence, and export types.
 - `Packages/SquatAnalysis/`: production streaming squat-cycle detection plus bakeoff label/scoring tools. Clean-rep gates are modeled separately and are not yet assessed.
-- `Packages/TrainerCore/`: Foundation-only quick-session, setup-gate, arming, countdown, active-capture, finalized-summary, ordered-correction, and review-discard state.
+- `Packages/TrainerCore/`: Foundation-only quick-session, setup-gate, arming, countdown, active-capture, finalized-summary, ordered-correction, review-discard, and ended-session projection state.
 - `Packages/TrainerRuntime/`: testable setup/pose/analysis runtime composition, including optional setup evidence and ordered, bounded active-set pose ingestion. `TrainerCore` remains dependency-free.
 
 ## Current Status
@@ -95,10 +95,11 @@ Current milestone boundary:
 10. M2.11 essential corrections are implemented. Original load/analyzer summaries remain immutable; current load/counted/clean values are derived from ordered `user_edit` corrections. Manual clean counts are labeled as user evidence, and invalid counts are rejected without clamping.
 11. Review now has a compact inline editor for load/unit, counted reps, and clean reps. Applying edits updates the auto-saved in-memory set, corrected load carries to the next draft, and corrected sets still roll back through review discard. There is no explicit Save Set or per-rep editing.
 12. M2.5a preserves unknown side-view evidence as unknown instead of failing it. M2.7a moves active-set pose delivery out of SwiftUI, bounds retention to 18,000 frames/10 minutes, and fails closed on live-event delivery loss. Their parent M2.5-M2.7 physical/UX gates remain open.
-13. Latest verification passes for `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (47 tests), `TrainerRuntime` (14 tests), and arm64 workspace Simulator builds of both `TrainerApp` and `PoseBakeoff`. A normal dual-architecture `TrainerApp` build exhausted the nearly full internal disk while writing the final universal binary after both architectures compiled and linked.
-14. A signed `TrainerApp` 0.1 (build 1) from before M2.11 was built through the workspace and installed on the connected iPhone 16 Pro Max at 2026-07-11 01:04 local time. Installed-app lookup succeeded; automated launch was blocked only because the phone was locked. Stop/review/edit behavior remains physically unverified.
-15. Next physical pass should cover M2.9/M2.10/M2.12 plus M2.11 load/count/clean edits, validation copy, keyboard dismissal, user-clean provenance, corrected next-set load, and corrected-set discard.
-16. The latest `codex/native-rebuild-checkpoint` commit contains the post-`9eaeae3` M2 implementation/docs batch. `.agents/` and `skills-lock.json` remain intentionally excluded.
+13. M2.14a now projects corrected, non-discarded completed sets into an immutable Foundation-only session summary. Ending a nonempty workout shows a transient set-by-set summary with counted totals, clean provenance, and low-confidence captures; no persistence, issue inference, or mixed-unit volume was added.
+14. Latest verification passes for `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (53 tests), `TrainerRuntime` (14 tests), and arm64 workspace Simulator builds of both `TrainerApp` and `PoseBakeoff`. A normal dual-architecture `TrainerApp` build exhausted the nearly full internal disk while writing the final universal binary after both architectures compiled and linked.
+15. A signed `TrainerApp` 0.1 (build 1) from before M2.11 was built through the workspace and installed on the connected iPhone 16 Pro Max at 2026-07-11 01:04 local time. Installed-app lookup succeeded; automated launch was blocked only because the phone was locked. Stop/review/edit/summary behavior remains physically unverified.
+16. Next physical pass should cover M2.9/M2.10/M2.12, M2.11 edits, and M2.14 multi-set summary rows, clean provenance, low-confidence labeling, and `Done` behavior.
+17. Branch `codex/native-rebuild-checkpoint` is backed up in draft PR #1 and includes M2.5a/M2.7a plus the M2.14a continuation. `.agents/` and `skills-lock.json` remain intentionally excluded.
 
 ## Package Checks
 

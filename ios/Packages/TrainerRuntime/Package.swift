@@ -26,7 +26,12 @@ let package = Package(
         ),
         .testTarget(
             name: "TrainerRuntimeTests",
-            dependencies: ["TrainerRuntime", "PoseCore", "TrainerCore"]
+            dependencies: [
+                "TrainerRuntime",
+                "PoseCore",
+                "SquatAnalysis",
+                "TrainerCore"
+            ]
         )
     ]
 )

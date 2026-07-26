@@ -1,6 +1,6 @@
 # M2 Back Squat Vertical Slice Tasks
 
-Last updated: 2026-07-12
+Last updated: 2026-07-25
 
 ## Milestone Goal
 
@@ -49,11 +49,11 @@ or End Workout -> Workout Summary -> Done
 
 ## Current Execution Boundary
 
-- M2.1-M2.4, M2.5a, M2.7a, M2.8, M2.11, and M2.14a are done.
+- M2.1-M2.4, M2.5a, M2.7a, M2.8, M2.11, M2.14a, and M2.V1 are done.
 - M2.5-M2.7, M2.9, M2.10, M2.12, and parent M2.14 retain the physical, UX, or clean-evidence gates documented in their result sections.
 - M2.13 persistence has not started; the M2.14a summary is transient and in memory only.
 - Do not infer the next ticket from numbering alone. For offline code-only options after M2.11, use `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` and take one user-approved slice.
-- M2.5a optional side-view evidence, M2.7a lossless active-set pose ingestion, and M2.14a in-memory session summary are done. The ranked process-only option is the native verification harness; take another bounded hardening ticket only after a new user choice.
+- M2.5a optional side-view evidence, M2.7a lossless active-set pose ingestion, M2.14a in-memory session summary, and the M2.V1 native verification harness are done. The highest-value next session is the documented physical-device pass; M2.11a atomic edits remain a bounded offline option only after a new user choice.
 
 ## Tasks
 
@@ -919,6 +919,49 @@ Result (2026-07-12):
 - Six public-behavior summary tests bring `TrainerCore` to 53 passing tests. All four package suites and arm64 Simulator workspace builds for both app schemes pass.
 - A signed `TrainerApp` build from checkpoint `ffb32d5` installed and launched successfully on the connected iPhone 16 Pro Max at 2026-07-12 19:56 local time. This verifies device delivery only, not the multi-set summary acceptance behavior.
 - M2.14 remains `in_progress` pending physical multi-set summary inspection. Recurring form issues remain deliberately unavailable because issue inference/clean scoring was not added.
+
+### M2.V1 Add Deterministic Native Verification Harness
+
+Status: done
+
+Goal:
+
+Make the current native Back Squat vertical slice repeatably verifiable offline without implying physical-device or real-world pose accuracy.
+
+Scoped behavior:
+
+- Add one repository command that runs all four Swift package suites and the workspace Simulator builds.
+- Support a package-only quick mode.
+- Use one isolated, self-cleaning scratch directory for verification state, with an override for choosing a filesystem that has sufficient free space.
+- Add a public app-runtime mapping seam for `SquatAnalysisResult` → `TrainerCore.SetAnalysisSummary`.
+- Exercise the public normalized-pose → runtime ingestion → streaming/batch analysis → app-domain package contracts with deterministic synthetic pose frames.
+- Keep clean-rep evidence unavailable when the analyzer has not assessed the required gates.
+
+Guardrails:
+
+- Do not change counted-rep thresholds or invent clean-rep gates.
+- Do not claim physical-device behavior, overlay alignment, or real-world pose accuracy from synthetic data.
+- Keep `TrainerCore` Foundation-only and independent of pose/analysis packages.
+- Do not start persistence, history, video retention, coaching, new exercises, or broad UI work.
+
+Verification:
+
+- Focused red/green checks in `TrainerRuntime`.
+- Shell syntax/help checks for the repository command.
+- All four Swift package suites.
+- `TrainerApp` workspace Simulator build; `PoseBakeoff` workspace Simulator build when running the full harness.
+
+Result (2026-07-24, corrected 2026-07-25):
+
+- Added executable `scripts/verify_native_ios.sh`. Its default mode runs all four package suites, then single-architecture Simulator builds for `TrainerApp` and `PoseBakeoff` through `ios/SquatTrainer.xcworkspace`; `--packages-only` provides the quick mode.
+- The harness canonicalizes an existing writable non-root scratch base with Apple Bash's `pwd -P`, creates one uniquely named child for SwiftPM caches/build products and Xcode DerivedData, restricts cleanup to that exact child prefix, and reports success only after cleanup succeeds. An explicit keep-artifacts option preserves the directory.
+- Scratch isolation and cleanup do not impose a storage quota or guarantee free capacity. `NATIVE_VERIFY_SCRATCH_ROOT` lets the caller select another filesystem when local space is constrained.
+- SwiftPM sandboxing remains enabled by default. `NATIVE_VERIFY_DISABLE_SWIFTPM_SANDBOX=1` is an explicit opt-in reserved for a process already contained by a trusted outer sandbox; the harness no longer infers that condition from `CODEX_SANDBOX`. The Xcode build portion still requires normal access to CoreSimulator services.
+- Extracted the production `SquatAnalysisResult` → `SetAnalysisSummary` adapter from `TrainerRootView` into public `TrainerRuntime.TrainerSetAnalysisMapper`; `TrainerCore` remains dependency-free.
+- Added mapper coverage for provisional/final count preservation, counted-rep filtering, frame totals, assessed clean totals, clean/not-clean/unavailable per-rep quality, partial evidence, and zero-count unavailable semantics.
+- Added a deterministic package-contract scenario that feeds synthetic normalized full-body frames through setup evidence and ordered active-set ingestion, verifies streaming and batch counted-rep agreement, maps the result, auto-completes a `QuickSession`, and projects the ended-session summary without inventing clean evidence. Its deliberately frozen test configuration does not cover production defaults, `TrainerSetupGateController` wiring, controller `AsyncStream` behavior, or queued Stop handling.
+- Corrected verification passed with Swift 6.1.2 / Xcode 16.4: PoseCore (1 XCTest + 3 Swift Testing tests), SquatAnalysis (10), TrainerCore (53), TrainerRuntime (19), plus host-architecture Simulator workspace builds for both app schemes.
+- This result proves deterministic package contracts and compilation only. It does not exercise AVFoundation camera input, MediaPipe landmark generation, CoreMotion, overlay geometry, SwiftUI interactions, physical Stop/review/edit/discard behavior, or real-world pose accuracy. All existing physical gates remain open.
 
 ### M2.15 Back Squat Vertical Slice Review
 

@@ -9,7 +9,7 @@ The current Python/Streamlit app remains the reference prototype. The native reb
 - `Packages/PoseCore/`: shared pose schema, estimator/live-stream contracts, setup evidence, and export types.
 - `Packages/SquatAnalysis/`: production streaming squat-cycle detection plus bakeoff label/scoring tools. Clean-rep gates are modeled separately and are not yet assessed.
 - `Packages/TrainerCore/`: Foundation-only quick-session, setup-gate, arming, countdown, active-capture, finalized-summary, ordered-correction, review-discard, and ended-session projection state.
-- `Packages/TrainerRuntime/`: testable setup/pose/analysis runtime composition, including optional setup evidence and ordered, bounded active-set pose ingestion. `TrainerCore` remains dependency-free.
+- `Packages/TrainerRuntime/`: testable setup/pose/analysis runtime composition, including optional setup evidence, ordered bounded active-set pose ingestion, and the production analyzer-to-domain summary mapper. `TrainerCore` remains dependency-free.
 
 ## Current Status
 
@@ -28,13 +28,25 @@ Xcode 16.4
 Build version 16F6
 ```
 
-The shared package checks pass:
+From the repository root, the complete offline verification command is:
 
 ```bash
-swift test --package-path Packages/PoseCore
-swift test --package-path Packages/SquatAnalysis
-swift test --package-path Packages/TrainerCore
-swift test --package-path Packages/TrainerRuntime
+scripts/verify_native_ios.sh
+```
+
+It runs all four package suites and single-host-architecture Simulator builds for both app schemes through the workspace. SwiftPM caches, build products, and Xcode DerivedData live under one temporary scratch directory that is removed before success is reported. The harness does not reserve or enforce disk capacity; set `NATIVE_VERIFY_SCRATCH_ROOT` to an existing writable directory on a filesystem with sufficient free space. Use the package-only quick mode while iterating:
+
+```bash
+scripts/verify_native_ios.sh --packages-only
+```
+
+The individual shared package checks are:
+
+```bash
+swift test --package-path ios/Packages/PoseCore
+swift test --package-path ios/Packages/SquatAnalysis
+swift test --package-path ios/Packages/TrainerCore
+swift test --package-path ios/Packages/TrainerRuntime
 ```
 
 The project currently has these schemes:
@@ -96,14 +108,22 @@ Current milestone boundary:
 11. Review now has a compact inline editor for load/unit, counted reps, and clean reps. Applying edits updates the auto-saved in-memory set, corrected load carries to the next draft, and corrected sets still roll back through review discard. There is no explicit Save Set or per-rep editing.
 12. M2.5a preserves unknown side-view evidence as unknown instead of failing it. M2.7a moves active-set pose delivery out of SwiftUI, bounds retention to 18,000 frames/10 minutes, and fails closed on live-event delivery loss. Their parent M2.5-M2.7 physical/UX gates remain open.
 13. M2.14a now projects corrected, non-discarded completed sets into an immutable Foundation-only session summary. Ending a nonempty workout shows a transient set-by-set summary with counted totals, clean provenance, and low-confidence captures; no persistence, issue inference, or mixed-unit volume was added.
-14. Latest verification passes for `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (53 tests), `TrainerRuntime` (14 tests), and arm64 workspace Simulator builds of both `TrainerApp` and `PoseBakeoff`. A normal dual-architecture `TrainerApp` build exhausted the nearly full internal disk while writing the final universal binary after both architectures compiled and linked.
-15. A signed `TrainerApp` 0.1 (build 1) from checkpoint `ffb32d5` built through the workspace, installed on the connected iPhone 16 Pro Max, and launched successfully at 2026-07-12 19:56 local time. This confirms delivery of the current M2.14a build, not its Stop/review/edit/discard/summary behavior.
-16. Next physical pass should cover M2.9/M2.10/M2.12, M2.11 edits, and M2.14 multi-set summary rows, clean provenance, low-confidence labeling, and `Done` behavior.
-17. Branch `codex/native-rebuild-checkpoint` is backed up in draft PR #1 and includes M2.5a/M2.7a plus the M2.14a continuation. `.agents/` and `skills-lock.json` remain intentionally excluded.
+14. M2.V1 deterministic verification is complete on `agent/overnight-native-verification`. `TrainerSetAnalysisMapper` is characterized in `TrainerRuntime`, and one synthetic deterministic package-contract scenario checks setup evidence, ordered pose ingestion, streaming/batch counted-rep agreement, analyzer-to-domain mapping, quick-session completion, and ended-session projection without inventing clean evidence. It does not exercise production-default configuration, `TrainerSetupGateController`, controller `AsyncStream` behavior, or queued Stop handling.
+15. The corrected full harness passes for `PoseCore` (1 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10 tests), `TrainerCore` (53 tests), `TrainerRuntime` (19 tests), and host-architecture workspace Simulator builds of both `TrainerApp` and `PoseBakeoff`. A normal dual-architecture `TrainerApp` build previously exhausted the nearly full internal disk while writing the final universal binary after both architectures compiled and linked.
+16. A signed `TrainerApp` 0.1 (build 1) from checkpoint `ffb32d5` built through the workspace, installed on the connected iPhone 16 Pro Max, and launched successfully at 2026-07-12 19:56 local time. This confirms delivery of the current M2.14a build, not its Stop/review/edit/discard/summary behavior.
+17. Next physical pass should cover M2.9/M2.10/M2.12, M2.11 edits, and M2.14 multi-set summary rows, clean provenance, low-confidence labeling, and `Done` behavior.
+18. `agent/overnight-native-verification` was created from checkpoint `aa57e11` and finalized locally as two scoped commits on 2026-07-26. It was not pushed and does not modify draft PR #1. `.agents/` and `skills-lock.json` remain intentionally excluded.
 
 ## Package Checks
 
-From this directory:
+From the repository root:
+
+```bash
+scripts/verify_native_ios.sh
+scripts/verify_native_ios.sh --packages-only
+```
+
+From this directory, the equivalent individual package commands are:
 
 ```bash
 swift test --package-path Packages/PoseCore
@@ -111,3 +131,5 @@ swift test --package-path Packages/SquatAnalysis
 swift test --package-path Packages/TrainerCore
 swift test --package-path Packages/TrainerRuntime
 ```
+
+These deterministic checks prove package contracts and Simulator compilation. They do not exercise physical camera capture, MediaPipe landmark generation, CoreMotion, SwiftUI interaction, device performance, or real-world squat accuracy.

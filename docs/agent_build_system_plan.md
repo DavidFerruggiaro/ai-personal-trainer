@@ -1,6 +1,6 @@
 # Agent Build System Plan
 
-Last updated: 2026-07-11
+Last updated: 2026-07-26
 
 ## Purpose
 
@@ -40,6 +40,7 @@ Every new agent should be able to restart from:
 - `docs/decision_log.md`
 - `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
 - `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`
+- `docs/design_reviews/2026-07-24_native_verification_harness.md`
 
 The repo should be the brain. Chat is temporary.
 
@@ -105,8 +106,10 @@ Already implemented:
 - `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
 - Native iOS skeleton
 - MediaPipe-backed live pose abstraction and `TrainerApp` camera flow
-- Foundation-only `TrainerCore` with 45 tests through M2.11
-- Full-sequence finalization, in-memory auto-save, honest review, corrections, and discard rollback
+- Foundation-only `TrainerCore` with 53 tests through M2.14a
+- Full-sequence finalization, in-memory auto-save, honest review, corrections, discard rollback, and transient ended-session projection
+- `TrainerRuntime` analyzer-to-domain mapping plus a deterministic synthetic package-contract scenario
+- `scripts/verify_native_ios.sh` as the one-command baseline for all four package suites and both single-architecture workspace Simulator builds
 
 ### Missing But Planned
 
@@ -154,7 +157,7 @@ Use now:
 6. Agent updates docs and decision log.
 7. Agent stops or asks for approval before the next ticket.
 
-Xcode is installed, all four package suites pass, and both apps build through `ios/SquatTrainer.xcworkspace`. Current work should still use one bounded ticket per loop because several M2 tickets retain physical gates.
+Xcode is installed, all four package suites pass, and both apps build through `ios/SquatTrainer.xcworkspace`. Run `scripts/verify_native_ios.sh` before handing off native changes; use `--packages-only` while iterating. The harness verifies deterministic contracts and compilation, not device behavior or pose accuracy. Current work should still use one bounded ticket per loop because several M2 tickets retain physical gates.
 
 ### Fresh Chat Loop
 
@@ -173,7 +176,7 @@ Fresh chat start contract:
 The current fresh-chat contract is:
 
 ```text
-Read the native rebuild handoff and post-M2.11 roadmap review, then execute one user-selected code-only ticket. Preserve all documented physical gates and stop after that ticket.
+Read the native rebuild handoff, the post-M2.11 roadmap review, and the latest verification report. Then execute one user-selected bounded ticket, preserve every documented physical gate, run the native verification harness, update repo memory, and stop.
 ```
 
 Do not use a broad goal like "build the whole app." Use `/goal` for one milestone ticket or one clearly bounded vertical slice.
@@ -210,11 +213,11 @@ Agents must not:
 
 ## Near-Term Action Plan
 
-1. Start from the latest branch checkpoint, which includes M2.5a, M2.7a, M2.11, and M2.14a and intentionally excludes `.agents/` and `skills-lock.json`.
+1. Continue from the locally finalized M2.V1 work on `agent/overnight-native-verification`; it starts from checkpoint `aa57e11` and intentionally excludes `.agents/` and `skills-lock.json`.
 2. At the next device session, close or update the physical gates for M2.5-M2.7, M2.9, M2.10, M2.11 UI, M2.12, and the parent M2.14 summary.
-3. For offline work, choose exactly one bounded ticket from `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
-4. Run the four Swift package suites and the relevant workspace builds.
-5. Update the task file, handoff, README, and decision log.
+3. For offline work, choose exactly one bounded ticket from `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`. M2.11a atomic edits remain the next listed code-hardening option; do not start it without a new user choice.
+4. Run `scripts/verify_native_ios.sh` for the four Swift package suites and both workspace Simulator builds.
+5. Update the task file, handoff, README, decision log, and applicable review report.
 6. Stop and ask before the next ticket.
 
 Do not start an unattended Ralph-style loop while the working tree is large, physical gates are open, or the next ticket has not been chosen by the user.

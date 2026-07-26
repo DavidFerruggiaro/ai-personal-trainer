@@ -20,3 +20,4 @@ YYYY-MM-DD_pose_estimator_architecture.md
 Current reviews:
 
 - `2026-07-11_post_m2_11_roadmap_review.md`: ranked offline code-only work, blocked physical gates, and cleanup/security timing after M2.11.
+- `2026-07-24_native_verification_harness.md`: actual-state audit, deterministic native harness implementation, exact verification results, proof limits, physical follow-ups, and the final two-commit split.

@@ -1,6 +1,6 @@
 # Native Rebuild Agent Handoff
 
-Last updated: 2026-07-12
+Last updated: 2026-07-26
 
 ## Purpose
 
@@ -44,12 +44,15 @@ Native rebuild additions:
 - `ios/Packages/SquatAnalysis/`: squat analysis package; production streaming analyzer now emits conservative provisional counted reps while keeping clean-gate status explicitly unassessed.
 - `ios/Packages/TrainerCore/`: Foundation-only app-domain package: quick session, catalog, load, setup gate, signal window, start-set arming, countdown, active-set capture, finalized set summaries, ordered user corrections, review-discard rollback, and immutable ended-session projections.
 - `ios/Packages/TrainerRuntime/`: testable app-runtime composition for optional setup evidence and ordered, bounded active-set pose retention/streaming analysis. It may depend on pose/analysis/domain packages; `TrainerCore` remains dependency-free.
+- `ios/Packages/TrainerRuntime/Sources/TrainerRuntime/TrainerSetAnalysisMapper.swift`: tested production adapter from analyzer output into the Foundation-only app-domain summary.
+- `scripts/verify_native_ios.sh`: deterministic native verification command for all package suites and both single-architecture workspace Simulator builds, with isolated temporary caches/DerivedData and a package-only quick mode.
 - `ios/SquatTrainer.xcodeproj` + `ios/SquatTrainer.xcworkspace`: always open the **workspace** (CocoaPods MediaPipe for both apps).
 
-Git / working tree note (2026-07-12):
+Git / working tree note (2026-07-25):
 
-- Branch: `codex/native-rebuild-checkpoint`.
-- The branch is backed up in draft PR #1. Its current product scope includes live-pose capture, lossless active-set ingestion, provisional counting, finalization/review/discard, M2.11 corrections, the M2.14a transient summary, and their documentation. Use `git log -1 --oneline` for the exact local checkpoint and `git status --short` before assuming the tree is clean.
+- Branch: `agent/overnight-native-verification`, created from `aa57e11` without modifying the existing draft PR or its base branch.
+- The native verification harness, analyzer-summary adapter, deterministic package-contract tests, and documentation were finalized locally as two scoped commits on 2026-07-26. They were not pushed, and draft PR #1 was not modified. Review the split in `docs/design_reviews/2026-07-24_native_verification_harness.md`.
+- The base `codex/native-rebuild-checkpoint` branch remains backed up in draft PR #1. No commit, push, merge, or PR mutation was performed during the verification-harness continuation.
 - Unrelated `.agents/` and `skills-lock.json` are intentionally excluded from product commits.
 
 ## Environment State
@@ -67,7 +70,7 @@ Xcode 16.4
 Build version 16F6
 ```
 
-Latest verification passes for `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (53 tests), `TrainerRuntime` (14 tests), and arm64 iOS Simulator builds of both `TrainerApp` and `PoseBakeoff` through `SquatTrainer.xcworkspace`. The normal dual-architecture `TrainerApp` Simulator build compiled and linked both architectures but the internal disk filled while writing the final universal binary; this is an environment-capacity failure, not a source compile failure. At 2026-07-12 19:56 local time, a fresh signed `TrainerApp` 0.1 (build 1) from checkpoint `ffb32d5` built successfully through the workspace, installed on the connected iPhone 16 Pro Max, and launched successfully through `devicectl` as bundle `com.aiPersonalTrainer.TrainerApp`. This verifies build, signing, installation, and launch only; Stop/review/edit/discard/summary behavior still requires the documented hands-on pass.
+Corrected verification passes with Swift 6.1.2 and Xcode 16.4: `PoseCore` (1 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10 tests), `TrainerCore` (53 tests), `TrainerRuntime` (19 tests), and host-architecture iOS Simulator builds of both `TrainerApp` and `PoseBakeoff` through `SquatTrainer.xcworkspace`. The harness canonicalizes one writable non-root scratch base and removes only its generated child before reporting success; it does not enforce a storage quota, so `NATIVE_VERIFY_SCRATCH_ROOT` should select a filesystem with sufficient free space. SwiftPM sandboxing stays enabled unless a caller explicitly opts out while already inside a trusted outer sandbox. The normal dual-architecture `TrainerApp` Simulator build previously compiled and linked both architectures but the internal disk filled while writing the final universal binary; this is an environment-capacity failure, not a source compile failure. At 2026-07-12 19:56 local time, a fresh signed `TrainerApp` 0.1 (build 1) from checkpoint `ffb32d5` built successfully through the workspace, installed on the connected iPhone 16 Pro Max, and launched successfully through `devicectl` as bundle `com.aiPersonalTrainer.TrainerApp`. This verifies build, signing, installation, and launch only; Stop/review/edit/discard/summary behavior still requires the documented hands-on pass.
 
 ## Locked Product Decisions
 
@@ -214,6 +217,7 @@ Current M1 state:
 - Active-set retention is explicitly bounded to 18,000 frames or 10 minutes. Overflow clears partial evidence and requires discard rather than finalizing an incomplete sequence. Stop freezes the exact ordered sequence; discard clears it.
 - M2.14a is done: ending a quick session produces an immutable Foundation-only snapshot of non-discarded completed sets using corrected values and honest clean-evidence provenance. Per-set units remain separate, and count totals fail closed if evidence is missing.
 - `TrainerApp` now replaces a nonempty ended workout with a minimal transient summary and shuts down camera/runtime work first. It shows set rows, counted totals, clean provenance, and low-confidence captures; it does not claim recurring issues, persist history, or calculate mixed-unit volume. Empty sessions dismiss directly.
+- M2.V1 is done on the local verification branch: one command now runs the complete offline package/build baseline, the analyzer-summary mapping no longer lives privately in SwiftUI, and a deterministic synthetic package-contract scenario composes PoseCore, TrainerRuntime, SquatAnalysis, and TrainerCore. It does not cover production-default configuration, controller wiring, `AsyncStream`, or queued Stop behavior, and it closes no physical or pose-accuracy gate.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -667,13 +671,10 @@ Use the Ryan-style repo-as-memory loop:
 4. Read `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.
 5. Read `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
 6. If a physical device is available, inspect M2.11 edits, complete the already-open M2.9/M2.10/M2.12 gates, and inspect the parent M2.14 multi-set summary; do not mark those tickets done without their checks.
-7. M2.5a, M2.7a, and M2.14a are complete. If work remains offline, the ranked process-only option is the native verification harness; analysis-summary mapping and M2.11a atomic edits are the next bounded code-hardening candidates. Take another ticket only after a new user choice.
-8. Verify Swift changes with:
-   - `swift test --package-path ios/Packages/PoseCore`
-   - `swift test --package-path ios/Packages/SquatAnalysis`
-   - `swift test --package-path ios/Packages/TrainerCore`
-   - `swift test --package-path ios/Packages/TrainerRuntime`
-   - `xcodebuild -workspace ios/SquatTrainer.xcworkspace -scheme TrainerApp -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`
+7. M2.5a, M2.7a, M2.14a, the native verification harness, and analysis-summary mapping are complete. The higher-value next session is the documented physical-device pass. M2.11a atomic edits remain a bounded offline option, but take it only after a new user choice.
+8. Verify native changes from the repo root with:
+   - `scripts/verify_native_ios.sh` for all four package suites plus both single-architecture workspace Simulator builds.
+   - `scripts/verify_native_ios.sh --packages-only` for the package-only quick mode.
 9. Update task status, this handoff, `ios/README.md`, and `docs/decision_log.md`.
 10. Ask before committing. Exclude `.agents/` and `skills-lock.json` unless the user explicitly requests them.
 11. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
@@ -689,7 +690,8 @@ Current boundary:
 7. M2.9 full-sequence processing and the first honest M2.10 review are implemented and build-verified. M2.9 needs an on-device Stop/review pass; M2.10 remains open because clean gates are unavailable, not zero. M2.12 review rollback is also implemented and needs device confirmation.
 8. M2.11 is implemented and automated verification passes. Its remaining follow-up is physical UI inspection only; detailed per-rep editing and persistence remain out of scope.
 9. M2.5a, M2.7a, and M2.14a from the ranked offline review are done. Parent M2.14 still needs physical multi-set summary inspection; persistence remains deferred.
-10. The product checkpoint excludes `.agents/` and `skills-lock.json`.
+10. M2.V1 deterministic verification is done on `agent/overnight-native-verification`: `TrainerRuntime` has 19 passing tests, including comprehensive analyzer-summary mapping characterization and one synthetic package-contract scenario, and the unified harness passes both host-architecture app builds. It proves deterministic package contracts and compilation, not production-default/controller wiring, physical behavior, or accuracy.
+11. The product checkpoint excludes `.agents/` and `skills-lock.json`.
 
 ## Open UX / Product Discussion (do not invent alone)
 

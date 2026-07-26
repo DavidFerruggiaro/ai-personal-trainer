@@ -22,6 +22,13 @@ Choose bounded native-iOS work after M2.11 without pretending open physical gate
 - Automated checks pass for all four Swift packages (`TrainerCore`: 53 tests; `TrainerRuntime`: 14 tests) and arm64 Simulator workspace builds of both app schemes. The parent M2.5-M2.7 physical/UX gates remain open.
 - Ranked candidate 3, M2.14a, is now complete: `QuickSession.end()` returns a corrected-evidence summary snapshot and `TrainerApp` renders a minimal transient end-workout summary. It adds no persistence, volume conversion, issue inference, or clean scoring. Parent M2.14 retains its physical multi-set inspection gate.
 
+## Implementation Update — 2026-07-24, corrected 2026-07-25
+
+- Ranked candidate 4 is complete. `scripts/verify_native_ios.sh` runs all four package suites and both host-architecture workspace Simulator builds from isolated temporary caches/DerivedData; `--packages-only` is the quick mode.
+- Ranked candidate 5 is complete as part of the verification work. `TrainerSetAnalysisMapper` now owns the production analyzer-to-domain mapping in `TrainerRuntime`, `TrainerRootView` consumes that adapter, and characterization covers assessed, unavailable, partial-evidence, zero-count, and per-rep quality branches.
+- `TrainerRuntime` now includes a deterministic package-contract scenario covering normalized synthetic setup evidence, ordered pose ingestion, streaming and batch counted-rep agreement, analyzer-summary mapping, `QuickSession` auto-completion, and ended-session projection with clean evidence still unavailable. Its frozen test configuration does not cover production defaults or controller wiring/queue behavior.
+- Corrected verification passes with PoseCore (1 XCTest + 3 Swift Testing tests), SquatAnalysis (10), TrainerCore (53), TrainerRuntime (19), and both host-architecture Simulator app builds. No physical gate or accuracy claim is closed by this result.
+
 ## Ranked Pure-Code Candidates
 
 ### 1. M2.5a Preserve Unknown Side-View Evidence
@@ -233,6 +240,6 @@ A formal security review has limited value before persistence, retained video, n
 
 The three ranked product candidates are complete: **M2.5a Preserve Unknown Side-View Evidence**, **M2.7a Lossless Active-Set Pose Ingestion**, and **M2.14a Foundation-Only Session Summary Projection**.
 
-The next process-only option is the **Native iOS Verification Harness**. Analysis-summary mapping and M2.11a atomic edits are the next bounded code-hardening candidates, but require a new user choice. Physical-device gates on the parent tickets remain open.
+The **Native iOS Verification Harness** and analysis-summary mapping hardening are also complete. M2.11a atomic edits remain the next bounded offline code-hardening candidate, but require a new user choice. The higher-value next session is still the physical Stop/review/edit/discard/summary pass; all parent-ticket physical gates remain open.
 
 Take one ticket only, use TDD where behavior is crisp, run all four package suites plus the relevant workspace builds, update repo memory, and stop before the next ticket.

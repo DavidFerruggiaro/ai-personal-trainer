@@ -166,3 +166,26 @@ This log records product and technical decisions that future agents should not r
 - Six summary tests bring `TrainerCore` to 53 passing tests. `PoseCore`, `SquatAnalysis` (10), `TrainerRuntime` (14), and arm64 workspace builds for both app schemes also pass.
 - M2.14 parent remains `in_progress` until a physical multi-set summary pass. No recurring issue inference, persistence/history, video retention, clean scoring, coaching, cloud/backend work, or exercise expansion was added.
 - Built and signed `TrainerApp` checkpoint `ffb32d5` through `ios/SquatTrainer.xcworkspace`, installed it on the connected iPhone 16 Pro Max, and launched bundle `com.aiPersonalTrainer.TrainerApp` successfully at 2026-07-12 19:56 local time. This closes no workout-behavior gate; it verifies only that the current build reaches the device and starts.
+
+## 2026-07-24
+
+- Created `agent/overnight-native-verification` from checkpoint `aa57e11` after confirming the only pre-existing working-tree entries were untracked `.agents/` and `skills-lock.json`. The base branch and draft PR #1 were not modified.
+- Chose M2.V1 deterministic native verification as the bounded offline slice. The audit found no one-command baseline, no direct test for the production analyzer-to-domain mapper, and no deterministic scenario crossing the public pose/runtime/analyzer/session contracts.
+- Added `scripts/verify_native_ios.sh` to run all four Swift package suites and both app schemes through `ios/SquatTrainer.xcworkspace`. The harness canonicalizes one writable non-root scratch base, creates and prefix-guards one temporary directory for SwiftPM state and Xcode DerivedData, builds only the current Simulator architecture, cleans before reporting success, and offers package-only and retained-artifact modes. It does not enforce storage capacity; callers can select another filesystem with `NATIVE_VERIFY_SCRATCH_ROOT`.
+- Moved the `SquatAnalysisResult` to `SetAnalysisSummary` mapping from private SwiftUI code into public `TrainerRuntime.TrainerSetAnalysisMapper`; `TrainerCore` remains Foundation-only and dependency-free.
+- SwiftPM sandboxing remains on by default. Disabling it now requires explicit `NATIVE_VERIFY_DISABLE_SWIFTPM_SANDBOX=1` opt-in from a caller that knows a trusted outer sandbox is active; `CODEX_SANDBOX` is no longer treated as proof.
+- Added comprehensive mapper characterization and one deterministic synthetic package-contract scenario covering setup evidence, ordered active-set ingestion, streaming/batch counted-rep agreement, analyzer mapping, quick-session completion, and ended-session projection with clean evidence still unavailable. The scenario intentionally does not cover production defaults or controller/queue wiring.
+- Corrected verification passed with Apple Swift 6.1.2 / Xcode 16.4: `PoseCore` (1 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10), `TrainerCore` (53), `TrainerRuntime` (19), and host-architecture Simulator workspace builds of both `TrainerApp` and `PoseBakeoff`. `git diff --check` also passed, and temporary harness artifacts were cleaned before PASS was reported.
+- Synthetic tests and Simulator compilation close no device or accuracy gate. AVFoundation, MediaPipe model/mapping behavior, CoreMotion, overlay alignment, SwiftUI interaction, device performance, real squat accuracy, and physical Stop/review/edit/discard/summary behavior remain outside this evidence.
+- No persistence, history, coaching, clean-rep gate, new exercise, broad UI, or architectural rewrite was started. No commit, push, merge, deployment, or pull-request mutation was performed.
+
+## 2026-07-25
+
+- Independent standards and spec reviews found incomplete mapper characterization, implicit SwiftPM sandbox disabling, non-canonical scratch validation, cleanup/PASS edge cases, inaccurate root-relative README commands and architecture help, overstated storage-capacity wording, and overly broad scenario wording.
+- The narrow correction pass added assessed/partial/zero mapper cases; made SwiftPM sandbox disabling explicit; canonicalized the scratch base with Apple Bash 3.2-compatible `pwd -P`; made cleanup refusal/failure nonzero and cleanup precede PASS; corrected CLI and README behavior; and described the synthetic path as a deterministic package-contract scenario with production-default/controller/queue exclusions.
+- No default-configuration or controller smoke test was added: those are separate integration boundaries. Existing package ingestion and domain Stop-isolation tests remain in place, while controller `AsyncStream` and queued Stop handling stay explicitly unproven. The mapper seam stays coupled to the harness slice because it is the minimal production boundary needed for deterministic analyzer-to-domain verification.
+
+## 2026-07-26
+
+- Finalized `agent/overnight-native-verification` locally as two scoped commits: analysis handoff/tests first, then the verification harness and repo-memory updates. `.agents/` and `skills-lock.json` remained untracked and excluded.
+- No push, merge, rebase, amend, deployment, branch switch, or draft PR #1 modification was performed.

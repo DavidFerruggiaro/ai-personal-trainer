@@ -19,4 +19,5 @@ YYYY-MM-DD_pose_estimator_architecture.md
 
 Current reviews:
 
+- `2026-07-25_native_ui_ux_audit.md`: ranked the complete quick-session UI journey and bounded the safe implementation to three presentation-only outcome initiatives.
 - `2026-07-11_post_m2_11_roadmap_review.md`: ranked offline code-only work, blocked physical gates, and cleanup/security timing after M2.11.

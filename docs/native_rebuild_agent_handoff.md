@@ -1,6 +1,6 @@
 # Native Rebuild Agent Handoff
 
-Last updated: 2026-07-12
+Last updated: 2026-07-25
 
 ## Purpose
 
@@ -52,6 +52,12 @@ Git / working tree note (2026-07-12):
 - The branch is backed up in draft PR #1. Its current product scope includes live-pose capture, lossless active-set ingestion, provisional counting, finalization/review/discard, M2.11 corrections, the M2.14a transient summary, and their documentation. Use `git log -1 --oneline` for the exact local checkpoint and `git status --short` before assuming the tree is clean.
 - Unrelated `.agents/` and `skills-lock.json` are intentionally excluded from product commits.
 
+Isolated UI pass note (2026-07-25):
+
+- `agent/native-ui-ux-pass` was created in an isolated worktree from trusted checkpoint `aa57e1196886e4ec6a633f86a9c4d53b2750fb79`.
+- The pass changes presentation and documentation only. It does not depend on or modify `agent/overnight-native-verification`, draft PR #1, pose/runtime/domain packages, or persistence.
+- The pass is finalized as two local commits on its isolated branch. See `docs/design_reviews/2026-07-25_native_ui_ux_audit.md` and `docs/tasks/native_ui_ux_pass.md` for scope and verification.
+
 ## Environment State
 
 Full Xcode is installed and selected.
@@ -68,6 +74,8 @@ Build version 16F6
 ```
 
 Latest verification passes for `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (53 tests), `TrainerRuntime` (14 tests), and arm64 iOS Simulator builds of both `TrainerApp` and `PoseBakeoff` through `SquatTrainer.xcworkspace`. The normal dual-architecture `TrainerApp` Simulator build compiled and linked both architectures but the internal disk filled while writing the final universal binary; this is an environment-capacity failure, not a source compile failure. At 2026-07-12 19:56 local time, a fresh signed `TrainerApp` 0.1 (build 1) from checkpoint `ffb32d5` built successfully through the workspace, installed on the connected iPhone 16 Pro Max, and launched successfully through `devicectl` as bundle `com.aiPersonalTrainer.TrainerApp`. This verifies build, signing, installation, and launch only; Stop/review/edit/discard/summary behavior still requires the documented hands-on pass.
+
+The isolated 2026-07-25 UI pass also compiles cleanly for an arm64 Simulator, including its deterministic SwiftUI component previews, and all four package suites still pass. Transient Simulator launch screenshots covered only the root screen and large-text layout; they were inspected during the pass, were not retained as repository artifacts, and do not close any physical workout-flow gate.
 
 ## Locked Product Decisions
 
@@ -666,17 +674,18 @@ Use the Ryan-style repo-as-memory loop:
 3. Read `docs/bakeoff_results/2026-07-09_engine_selection.md`.
 4. Read `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.
 5. Read `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
-6. If a physical device is available, inspect M2.11 edits, complete the already-open M2.9/M2.10/M2.12 gates, and inspect the parent M2.14 multi-set summary; do not mark those tickets done without their checks.
-7. M2.5a, M2.7a, and M2.14a are complete. If work remains offline, the ranked process-only option is the native verification harness; analysis-summary mapping and M2.11a atomic edits are the next bounded code-hardening candidates. Take another ticket only after a new user choice.
-8. Verify Swift changes with:
+6. Read `docs/design_reviews/2026-07-25_native_ui_ux_audit.md` if continuing or reviewing the isolated presentation pass.
+7. If a physical device is available, inspect M2.11 edits, complete the already-open M2.9/M2.10/M2.12 gates, and inspect the parent M2.14 multi-set summary; do not mark those tickets done without their checks.
+8. M2.5a, M2.7a, and M2.14a are complete. If work remains offline, the ranked process-only option is the native verification harness; analysis-summary mapping and M2.11a atomic edits are the next bounded code-hardening candidates. Take another ticket only after a new user choice.
+9. Verify Swift changes with:
    - `swift test --package-path ios/Packages/PoseCore`
    - `swift test --package-path ios/Packages/SquatAnalysis`
    - `swift test --package-path ios/Packages/TrainerCore`
    - `swift test --package-path ios/Packages/TrainerRuntime`
    - `xcodebuild -workspace ios/SquatTrainer.xcworkspace -scheme TrainerApp -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`
-9. Update task status, this handoff, `ios/README.md`, and `docs/decision_log.md`.
-10. Ask before committing. Exclude `.agents/` and `skills-lock.json` unless the user explicitly requests them.
-11. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
+10. Update task status, this handoff, `ios/README.md`, and `docs/decision_log.md`.
+11. Ask before committing. Exclude `.agents/` and `skills-lock.json` unless the user explicitly requests them.
+12. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
 
 Current boundary:
 
@@ -689,7 +698,8 @@ Current boundary:
 7. M2.9 full-sequence processing and the first honest M2.10 review are implemented and build-verified. M2.9 needs an on-device Stop/review pass; M2.10 remains open because clean gates are unavailable, not zero. M2.12 review rollback is also implemented and needs device confirmation.
 8. M2.11 is implemented and automated verification passes. Its remaining follow-up is physical UI inspection only; detailed per-rep editing and persistence remain out of scope.
 9. M2.5a, M2.7a, and M2.14a from the ranked offline review are done. Parent M2.14 still needs physical multi-set summary inspection; persistence remains deferred.
-10. The product checkpoint excludes `.agents/` and `skills-lock.json`.
+10. The isolated UI pass clarifies state/exit safety, zero/discard/rollback recovery, and adaptive review/summary accessibility without changing domain behavior. It is committed locally on its isolated branch and remains physically unverified.
+11. The product checkpoint excludes `.agents/` and `skills-lock.json`.
 
 ## Open UX / Product Discussion (do not invent alone)
 
@@ -700,6 +710,7 @@ Current boundary:
 - Physical review check: confirm Stop removes camera immediately, processing transitions automatically, canonical count/load are legible, unavailable clean copy is clear, and low-confidence labeling appears after setup override.
 - Physical M2.11 edit check: edit load/count/clean, challenge invalid values, confirm user-corrected clean provenance, confirm corrected load carries to the next set, and discard a corrected review.
 - Physical M2.14 check: end a multi-set workout, verify corrected/non-discarded rows and low-confidence labeling, confirm clean evidence wording, and use `Done` to return home.
+- Physical UI-pass check: inspect the recording/processing/review hierarchy at lifting distance, zero-result recovery, each phase-specific discard alert, corrected-set rollback notice, camera interruption during arming/countdown/recording, and review/summary layouts with the keyboard and larger text.
 
 ## Milestone 1 Ticket Breakdown
 

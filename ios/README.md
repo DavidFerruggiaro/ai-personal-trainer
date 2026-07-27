@@ -100,6 +100,8 @@ Current milestone boundary:
 15. A signed `TrainerApp` 0.1 (build 1) from checkpoint `ffb32d5` built through the workspace, installed on the connected iPhone 16 Pro Max, and launched successfully at 2026-07-12 19:56 local time. This confirms delivery of the current M2.14a build, not its Stop/review/edit/discard/summary behavior.
 16. Next physical pass should cover M2.9/M2.10/M2.12, M2.11 edits, and M2.14 multi-set summary rows, clean provenance, low-confidence labeling, and `Done` behavior.
 17. Branch `codex/native-rebuild-checkpoint` is backed up in draft PR #1 and includes M2.5a/M2.7a plus the M2.14a continuation. `.agents/` and `skills-lock.json` remain intentionally excluded.
+18. An isolated UI-only pass on `agent/native-ui-ux-pass` clarifies recording/processing/review state, controlled transient-session exit, camera failure, zero-result recovery, phase-accurate discard confirmation, rollback feedback, adaptive review editing, and multi-set summary accessibility. It does not change analysis, runtime, domain, or persistence behavior.
+19. The UI pass compiles cleanly for an arm64 Simulator and includes deterministic component previews. Transient root-screen Simulator screenshots were inspected as layout evidence but were not retained as repository artifacts; the complete workout flow and camera-interruption races still require physical inspection.
 
 ## Package Checks
 

@@ -166,3 +166,11 @@ This log records product and technical decisions that future agents should not r
 - Six summary tests bring `TrainerCore` to 53 passing tests. `PoseCore`, `SquatAnalysis` (10), `TrainerRuntime` (14), and arm64 workspace builds for both app schemes also pass.
 - M2.14 parent remains `in_progress` until a physical multi-set summary pass. No recurring issue inference, persistence/history, video retention, clean scoring, coaching, cloud/backend work, or exercise expansion was added.
 - Built and signed `TrainerApp` checkpoint `ffb32d5` through `ios/SquatTrainer.xcworkspace`, installed it on the connected iPhone 16 Pro Max, and launched bundle `com.aiPersonalTrainer.TrainerApp` successfully at 2026-07-12 19:56 local time. This closes no workout-behavior gate; it verifies only that the current build reaches the device and starts.
+
+## 2026-07-25
+
+- Audited the complete native Quick Session journey from launch through multi-set summary at trusted checkpoint `aa57e11`, using an isolated `agent/native-ui-ux-pass` worktree that does not depend on or modify `agent/overnight-native-verification` or draft PR #1.
+- Bounded implementation to three presentation-only outcome initiatives: state hierarchy and exit safety; zero/discard/rollback recovery; and adaptive review/summary accessibility.
+- Preserved all analyzer, rep-counting, coaching, camera/runtime, mapping, workout-domain, correction, summary-projection, and persistence behavior. The existing automatic save-before-review, immediate known-zero discard, conservative unfinished/detected-rep confirmation, and corrected-set rollback remain intact.
+- Added deterministic SwiftUI component previews and verified the pass with all four package suites plus a clean arm64 `TrainerApp` Simulator build. The inspected Simulator launch screenshots were transient, were not retained as repository artifacts, and do not establish that the physical workout flow works.
+- Kept `Arm set` wording, weak-setup override design, countdown choices, and all existing Stop/review/edit/discard/summary physical acceptance gates open.

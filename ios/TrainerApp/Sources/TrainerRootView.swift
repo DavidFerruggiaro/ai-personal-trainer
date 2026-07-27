@@ -1,8 +1,29 @@
+import Accessibility
 import PoseCore
 import SquatAnalysis
 import SwiftUI
 import TrainerCore
 import TrainerRuntime
+
+private enum SessionFieldFocus: Hashable {
+    case load
+    case reviewLoad
+    case reviewCountedReps
+    case reviewCleanReps
+}
+
+private struct WorkoutStatusPresentation {
+    let title: String
+    let detail: String
+    let systemImage: String
+    let tint: Color
+}
+
+private struct SessionNoticePresentation: Equatable {
+    let title: String
+    let detail: String
+    let systemImage: String
+}
 
 struct TrainerRootView: View {
     var body: some View {
@@ -76,10 +97,108 @@ struct TrainerRootView: View {
     }
 }
 
+#if DEBUG
+#Preview("Workout state hierarchy") {
+    ScrollView {
+        VStack(spacing: 16) {
+            WorkoutStatusCard(
+                presentation: WorkoutStatusPresentation(
+                    title: "Recording",
+                    detail: "Live count is provisional. Tap Stop when the set is over.",
+                    systemImage: "record.circle.fill",
+                    tint: .red
+                ),
+                completedSetCount: 1
+            )
+
+            WorkoutStatusCard(
+                presentation: WorkoutStatusPresentation(
+                    title: "Processing set",
+                    detail: "The camera is off. Review opens automatically when the final count is ready.",
+                    systemImage: "hourglass",
+                    tint: .blue
+                ),
+                completedSetCount: 1
+            )
+
+            WorkoutStatusCard(
+                presentation: WorkoutStatusPresentation(
+                    title: "Review ready",
+                    detail: "This set is saved in the current session. Check it before continuing.",
+                    systemImage: "checkmark.circle.fill",
+                    tint: .green
+                ),
+                completedSetCount: 2
+            )
+
+            CameraAvailabilityCallout(
+                title: "Camera unavailable",
+                detail: "Camera permission is unavailable.",
+                isLoading: false
+            )
+        }
+        .padding()
+    }
+}
+
+#Preview("Review and recovery states") {
+    ScrollView {
+        VStack(spacing: 16) {
+            ReviewResultHero(load: "185 lb", countedReps: 0)
+            ZeroRepReviewNotice(setOrdinal: 2)
+            ValidationCallout(message: "Clean reps cannot exceed counted reps.")
+            SessionNoticeCard(
+                presentation: SessionNoticePresentation(
+                    title: "Corrected set discarded",
+                    detail: "Set 2 was removed. Its load is restored for the retry.",
+                    systemImage: "arrow.uturn.backward.circle.fill"
+                ),
+                dismiss: {}
+            )
+            SessionSummarySetRow(
+                ordinal: 2,
+                result: "185 lb × 5",
+                cleanResult: "4 clean · user corrected",
+                captureConfidence: .low
+            )
+        }
+        .padding()
+    }
+}
+
+#Preview("Accessibility text layout") {
+    ScrollView {
+        VStack(spacing: 16) {
+            WorkoutStatusCard(
+                presentation: WorkoutStatusPresentation(
+                    title: "Processing failed",
+                    detail: "Retry finalization or discard this capture.",
+                    systemImage: "exclamationmark.triangle.fill",
+                    tint: .orange
+                ),
+                completedSetCount: 3
+            )
+            ReviewResultHero(load: "102.5 kg", countedReps: 12)
+            SessionSummarySetRow(
+                ordinal: 3,
+                result: "102.5 kg × 12",
+                cleanResult: "Clean reps unavailable",
+                captureConfidence: .unavailable
+            )
+        }
+        .padding()
+    }
+    .environment(\.dynamicTypeSize, .accessibility3)
+    .preferredColorScheme(.dark)
+}
+#endif
+
 private struct BackSquatQuickSessionView: View {
     @Environment(\.dismiss) private var dismiss
-    @FocusState private var isLoadFieldFocused: Bool
-    @FocusState private var isReviewEditFieldFocused: Bool
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @FocusState private var focusedField: SessionFieldFocus?
+    @ScaledMetric(relativeTo: .largeTitle) private var countdownNumberSize = 72
+    @ScaledMetric(relativeTo: .largeTitle) private var provisionalRepCountSize = 72
     @State private var session: QuickSession
     @State private var loadText: String
     @State private var loadUnit: LoadUnit
@@ -101,6 +220,7 @@ private struct BackSquatQuickSessionView: View {
     @State private var captureStopTask: Task<Void, Never>?
     @State private var processingTask: Task<Void, Never>?
     @State private var showWeakSetupOption = false
+    @State private var sessionNotice: SessionNoticePresentation?
     @StateObject private var setupController = TrainerSetupGateController()
     private let cues = TrainerSessionCues()
     private let exercise: ExerciseDefinition
@@ -130,49 +250,127 @@ private struct BackSquatQuickSessionView: View {
         !loadText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private var sessionStatusTitle: String {
+    private var cameraFailureMessage: String? {
+        guard case let .failed(message) = setupController.streamState else {
+            return nil
+        }
+        return message
+    }
+
+    private var canArmSet: Bool {
+        hasEnteredLoad && cameraFailureMessage == nil
+    }
+
+    private var requiresControlledSessionExit: Bool {
+        endedSummary != nil
+            || isArmedOrCounting
+            || activeCapture.phase != .idle
+            || !session.completedSets.isEmpty
+    }
+
+    private var workoutStatus: WorkoutStatusPresentation {
         switch activeCapture.phase {
         case .recording:
-            "Recording set"
+            if let cameraFailureMessage {
+                return WorkoutStatusPresentation(
+                    title: "Camera interrupted",
+                    detail: "\(cameraFailureMessage) Tap Stop to finish or discard this capture.",
+                    systemImage: "exclamationmark.triangle.fill",
+                    tint: .red
+                )
+            }
+            return WorkoutStatusPresentation(
+                title: "Recording",
+                detail: "Live count is provisional. Tap Stop when the set is over.",
+                systemImage: "record.circle.fill",
+                tint: .red
+            )
         case .processing:
-            "Processing set"
+            return WorkoutStatusPresentation(
+                title: "Processing set",
+                detail: "The camera is off. Review opens automatically when the final count is ready.",
+                systemImage: "hourglass",
+                tint: .blue
+            )
         case .processingFailed:
-            "Finalization failed"
+            return WorkoutStatusPresentation(
+                title: "Processing failed",
+                detail: "Retry finalization or discard this capture.",
+                systemImage: "exclamationmark.triangle.fill",
+                tint: .orange
+            )
         case .awaitingReview:
-            "Set finalized"
+            let finalizedCount = reviewedSet?.analysis?.finalizedCountedReps
+                ?? activeCapture.finalizedCountedReps
+            let currentCount = reviewedSet?.countedReps ?? finalizedCount
+            if currentCount == 0, finalizedCount == 0 {
+                return WorkoutStatusPresentation(
+                    title: "No reps detected",
+                    detail: "Discard and retry keeps an accidental capture out of this workout.",
+                    systemImage: "exclamationmark.circle.fill",
+                    tint: .orange
+                )
+            }
+            return WorkoutStatusPresentation(
+                title: "Review ready",
+                detail: "This set is saved in the current session. Check it before continuing.",
+                systemImage: "checkmark.circle.fill",
+                tint: .green
+            )
         case .idle, .discarded:
-            "Active session"
+            if let cameraFailureMessage {
+                return WorkoutStatusPresentation(
+                    title: "Camera unavailable",
+                    detail: cameraFailureMessage,
+                    systemImage: "exclamationmark.triangle.fill",
+                    tint: .orange
+                )
+            }
+            if case let .counting(remainingSeconds) = countdown.state {
+                return WorkoutStatusPresentation(
+                    title: "Starting in \(remainingSeconds)",
+                    detail: "Recording begins automatically when the countdown ends.",
+                    systemImage: "timer",
+                    tint: .blue
+                )
+            }
+            if countdown.state == .visibilityConfirmationRequired {
+                return WorkoutStatusPresentation(
+                    title: "Setup changed",
+                    detail: "Full-body visibility was lost before recording.",
+                    systemImage: "person.crop.rectangle",
+                    tint: .orange
+                )
+            }
+            if startArming.isArmed {
+                return WorkoutStatusPresentation(
+                    title: "Set armed",
+                    detail: "Leave the phone propped and walk into frame.",
+                    systemImage: "figure.walk",
+                    tint: .blue
+                )
+            }
+            if setupController.assessment.isReady {
+                return WorkoutStatusPresentation(
+                    title: "Setup ready",
+                    detail: "Enter the load and arm the set when you are ready to step away.",
+                    systemImage: "checkmark.circle.fill",
+                    tint: .green
+                )
+            }
+            return WorkoutStatusPresentation(
+                title: "Set setup",
+                detail: "Enter the load and complete the camera checks.",
+                systemImage: "camera.viewfinder",
+                tint: .accentColor
+            )
         }
     }
 
-    private var sessionStatusIcon: String {
-        switch activeCapture.phase {
-        case .recording:
-            "record.circle"
-        case .processing:
-            "gearshape.2"
-        case .processingFailed:
-            "exclamationmark.triangle"
-        case .awaitingReview:
-            "checkmark.circle"
-        case .idle, .discarded:
-            "timer"
-        }
-    }
-
-    private var sessionStatusColor: Color {
-        switch activeCapture.phase {
-        case .recording:
-            .orange
-        case .processing:
-            .blue
-        case .processingFailed:
-            .orange
-        case .awaitingReview:
-            .green
-        case .idle, .discarded:
-            .green
-        }
+    private func announceWorkoutStatus() {
+        AccessibilityNotification.Announcement(
+            "\(workoutStatus.title). \(workoutStatus.detail)"
+        ).post()
     }
 
     init(exercise: ExerciseDefinition) {
@@ -202,17 +400,16 @@ private struct BackSquatQuickSessionView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    HStack {
-                        Label(sessionStatusTitle, systemImage: sessionStatusIcon)
-                            .fontWeight(.semibold)
+                    WorkoutStatusCard(
+                        presentation: workoutStatus,
+                        completedSetCount: session.completedSets.count
+                    )
 
-                        Spacer()
-
-                        Text("\(session.completedSets.count) completed")
-                            .foregroundStyle(.secondary)
+                    if let sessionNotice {
+                        SessionNoticeCard(presentation: sessionNotice) {
+                            self.sessionNotice = nil
+                        }
                     }
-                    .padding(16)
-                    .background(sessionStatusColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
 
                     if isCapturingSet {
                         cameraPreview
@@ -237,6 +434,7 @@ private struct BackSquatQuickSessionView: View {
                             endSession()
                         }
                         .buttonStyle(.bordered)
+                        .controlSize(.large)
                         .disabled(activeCapture.phase == .recording)
                     }
                 }
@@ -248,13 +446,23 @@ private struct BackSquatQuickSessionView: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") {
-                    isLoadFieldFocused = false
-                    isReviewEditFieldFocused = false
+                    focusedField = nil
                 }
             }
         }
         .navigationTitle(endedSummary == nil ? exercise.displayName : "Workout Summary")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(requiresControlledSessionExit)
+        .alert(discardAlertTitle, isPresented: discardConfirmationBinding) {
+            Button(discardCancelButtonTitle, role: .cancel) {
+                activeCapture.cancelDiscardConfirmation()
+            }
+            Button(discardConfirmButtonTitle, role: .destructive) {
+                confirmDiscardActiveSet()
+            }
+        } message: {
+            Text(discardConfirmationMessage)
+        }
         .task {
             if endedSummary == nil {
                 setupController.start()
@@ -275,10 +483,28 @@ private struct BackSquatQuickSessionView: View {
             guard let failure else { return }
             handleActiveSetPoseIngestionFailure(failure)
         }
+        .onChange(of: activeCapture.phase) { _, phase in
+            switch phase {
+            case .recording, .processing, .processingFailed, .awaitingReview:
+                focusedField = nil
+                announceWorkoutStatus()
+            case .idle, .discarded:
+                break
+            }
+        }
+        .onChange(of: setupController.streamState) { _, state in
+            if case .failed = state {
+                announceWorkoutStatus()
+            }
+        }
     }
 
     @ViewBuilder
     private var preCaptureSections: some View {
+        let loadInputLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(spacing: 12))
+
         VStack(alignment: .leading, spacing: 14) {
             Label("\(exercise.variantDisplayName) · \(exercise.displayName)", systemImage: "figure.strengthtraining.traditional")
             Label("Side-view capture", systemImage: "camera.viewfinder")
@@ -301,12 +527,14 @@ private struct BackSquatQuickSessionView: View {
             Text("Load for Set \(session.currentSet.ordinal)")
                 .font(.headline)
 
-            HStack(spacing: 12) {
+            loadInputLayout {
                 TextField("Weight", text: $loadText)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
-                    .focused($isLoadFieldFocused)
+                    .focused($focusedField, equals: .load)
+                    .frame(minHeight: 44)
                     .accessibilityLabel("Load value")
+                    .accessibilityHint("Enter the total load for Set \(session.currentSet.ordinal).")
 
                 Picker("Unit", selection: $loadUnit) {
                     ForEach(LoadUnit.allCases) { unit in
@@ -314,11 +542,14 @@ private struct BackSquatQuickSessionView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 130)
+                .frame(
+                    maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 130
+                )
+                .frame(minHeight: 44)
             }
 
-            if let previousSet = session.completedSets.last {
-                Text("Carried forward from Set \(previousSet.ordinal). Edit it if the load changes.")
+            if session.currentSet.load != nil {
+                Text("A load is prefilled for this set. Edit it if the load changes.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
@@ -328,9 +559,7 @@ private struct BackSquatQuickSessionView: View {
             }
 
             if let loadEntryError {
-                Text(loadEntryError)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                ValidationCallout(message: loadEntryError)
             }
         }
         .padding(16)
@@ -350,16 +579,26 @@ private struct BackSquatQuickSessionView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(cameraStatusBanner)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.white)
-                    .padding(8)
-                    .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 8))
+                HStack(spacing: 7) {
+                    if isCapturingSet {
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 9, height: 9)
+                    }
+                    Text(cameraStatusBanner)
+                }
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.black.opacity(0.78), in: Capsule())
 
                 if case let .counting(remainingSeconds) = countdown.state {
                     Text("\(remainingSeconds)")
-                        .font(.system(size: 72, weight: .bold, design: .rounded))
+                        .font(.system(size: countdownNumberSize, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -368,18 +607,42 @@ private struct BackSquatQuickSessionView: View {
             }
             .padding(10)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Rear camera preview")
+        .accessibilityValue(cameraAccessibilityValue)
     }
 
     private var cameraStatusBanner: String {
+        if cameraFailureMessage != nil {
+            return isCapturingSet ? "CAMERA INTERRUPTED · TAP STOP" : "CAMERA UNAVAILABLE"
+        }
         if isCapturingSet {
-            return "Recording · \(setupController.activeSetPoseStatus.framesObserved) frames"
+            return "RECORDING"
+        }
+        if case .counting = countdown.state {
+            return "COUNTDOWN"
         }
         if startArming.isArmed {
             let passing = setupController.assessment.checks.filter { $0.status == .passing }.count
-            return "Armed · \(passing)/\(setupController.assessment.checks.count) checks"
+            return "ARMED · \(passing)/\(setupController.assessment.checks.count) CHECKS"
         }
-        if case .counting = countdown.state {
-            return "Countdown"
+        return setupController.statusText
+    }
+
+    private var cameraAccessibilityValue: String {
+        if let cameraFailureMessage {
+            return isCapturingSet
+                ? "Camera interrupted. \(cameraFailureMessage) Tap Stop to finish or discard this capture."
+                : "Camera unavailable. \(cameraFailureMessage)"
+        }
+        if isCapturingSet {
+            return "Recording is active."
+        }
+        if case let .counting(remainingSeconds) = countdown.state {
+            return "Countdown, \(remainingSeconds) seconds remaining."
+        }
+        if startArming.isArmed {
+            return "Set armed. \(passingCheckSummaryText) setup checks passing."
         }
         return setupController.statusText
     }
@@ -394,6 +657,20 @@ private struct BackSquatQuickSessionView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if let cameraFailureMessage {
+                CameraAvailabilityCallout(
+                    title: "Camera unavailable",
+                    detail: cameraFailureMessage,
+                    isLoading: false
+                )
+            } else if setupController.streamState == .starting {
+                CameraAvailabilityCallout(
+                    title: "Starting rear camera",
+                    detail: "Setup checks will begin when the camera is ready.",
+                    isLoading: true
+                )
+            }
+
             ForEach(setupController.assessment.checks) { check in
                 SetupCheckRow(check: check)
             }
@@ -406,6 +683,7 @@ private struct BackSquatQuickSessionView: View {
                 resetSetup()
             }
             .buttonStyle(.bordered)
+            .controlSize(.large)
             .disabled(countdown.state != .idle || startArming.isArmed)
         }
         .padding(16)
@@ -422,8 +700,12 @@ private struct BackSquatQuickSessionView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text("\(setupController.activeSetPoseStatus.provisionalCountedReps)")
-                        .font(.system(size: 72, weight: .bold, design: .rounded))
+                        .font(.system(size: provisionalRepCountSize, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                        .accessibilityLabel("Provisional rep count")
+                        .accessibilityValue("\(setupController.activeSetPoseStatus.provisionalCountedReps)")
                     Text("Live count is provisional. Final counted and clean reps come after the set.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -433,45 +715,42 @@ private struct BackSquatQuickSessionView: View {
                 .padding(20)
                 .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 16))
 
-                if activeCapture.discardConfirmationRequired {
-                    discardConfirmation
-                } else {
-                    HStack(spacing: 12) {
-                        Button("Discard", role: .destructive) {
-                            discardActiveSet()
-                        }
-                        .buttonStyle(.bordered)
-
-                        Button("Stop") {
-                            stopActiveSet()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .frame(maxWidth: .infinity)
+                HStack(spacing: 12) {
+                    Button("Discard", role: .destructive) {
+                        discardActiveSet()
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+
+                    Button("Stop") {
+                        stopActiveSet()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(.red)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHint("Stops recording and opens set processing.")
                 }
             }
 
         case .processing:
             VStack(spacing: 10) {
                 ProgressView()
-                Text("Processing set…")
+                    .controlSize(.large)
+                Text("Analyzing the complete set")
                     .font(.headline)
-                Text(retainedPoseSequence.map {
-                    "Finalizing counted reps from \($0.frames.count) retained pose frames."
-                } ?? "Freezing the emitted active-set pose sequence…")
+                Text(retainedPoseSequence == nil
+                     ? "Finishing the capture before analysis. The camera is off."
+                     : "Finalizing counted reps. Review will open automatically.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
-                if activeCapture.discardConfirmationRequired {
-                    discardConfirmation
-                } else {
-                    Button("Discard set", role: .destructive) {
-                        discardActiveSet()
-                    }
-                    .buttonStyle(.bordered)
+                Button("Discard set", role: .destructive) {
+                    discardActiveSet()
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
             .frame(maxWidth: .infinity)
             .padding(24)
@@ -479,35 +758,37 @@ private struct BackSquatQuickSessionView: View {
 
         case .processingFailed:
             VStack(alignment: .leading, spacing: 14) {
-                Label("Couldn’t finalize set", systemImage: "exclamationmark.triangle.fill")
-                    .font(.headline)
-                    .foregroundStyle(.orange)
+                Label {
+                    Text("Couldn’t finalize set")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
+                .font(.headline)
 
                 Text(processingError ?? "The full-sequence analysis did not finish.")
                     .foregroundStyle(.secondary)
 
                 Text(retainedPoseSequence == nil
-                     ? "No trustworthy sequence remains. Discard this capture and retry the set."
-                     : "No set result was saved. Retry with the retained frames or discard this capture.")
+                     ? "This capture can’t be reviewed reliably. Discard it and retry the set."
+                     : "No set result was saved. Retry analysis from this capture or discard it.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                if activeCapture.discardConfirmationRequired {
-                    discardConfirmation
-                } else {
-                    HStack(spacing: 12) {
-                        Button("Discard", role: .destructive) {
-                            discardActiveSet()
-                        }
-                        .buttonStyle(.bordered)
+                HStack(spacing: 12) {
+                    Button("Discard", role: .destructive) {
+                        discardActiveSet()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
 
-                        if retainedPoseSequence != nil {
-                            Button("Retry Finalization") {
-                                retryFinalization()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .frame(maxWidth: .infinity)
+                    if retainedPoseSequence != nil {
+                        Button("Retry Processing") {
+                            retryFinalization()
                         }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity)
                     }
                 }
             }
@@ -519,15 +800,20 @@ private struct BackSquatQuickSessionView: View {
                 postSetReview(completedSet: reviewedSet, analysis: analysis)
             } else {
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("Review unavailable", systemImage: "exclamationmark.triangle.fill")
-                        .font(.headline)
-                        .foregroundStyle(.orange)
+                    Label {
+                        Text("Review unavailable")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
+                    .font(.headline)
                     Text("The set reached review without a finalized analysis summary.")
                         .foregroundStyle(.secondary)
                     Button("Discard set", role: .destructive) {
                         discardActiveSet()
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.large)
                 }
                 .padding(16)
                 .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
@@ -538,52 +824,50 @@ private struct BackSquatQuickSessionView: View {
         }
     }
 
-    private var discardConfirmation: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Discard this set? Counted reps were detected.")
-                .font(.subheadline.weight(.semibold))
-            HStack {
-                Button("Keep Set") {
-                    activeCapture.cancelDiscardConfirmation()
-                }
-                .buttonStyle(.bordered)
-
-                Button("Discard", role: .destructive) {
-                    confirmDiscardActiveSet()
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding(16)
-        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
-    }
-
     private func postSetReview(
         completedSet: CompletedSetSummary,
         analysis: SetAnalysisSummary
     ) -> some View {
         let countedReps = completedSet.countedReps ?? analysis.finalizedCountedReps
         let cleanResult = completedSet.cleanResult ?? .unavailable
+        let showsZeroRepEmptyState = countedReps == 0
+            && analysis.finalizedCountedReps == 0
 
         return VStack(alignment: .leading, spacing: 18) {
-            Label("Set \(completedSet.ordinal) finalized", systemImage: "checkmark.circle.fill")
-                .font(.headline)
-                .foregroundStyle(.green)
-
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(formattedLoad(completedSet.load))
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                Text("×")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                Text("\(countedReps)")
-                    .font(.system(size: 54, weight: .bold, design: .rounded))
-                    .monospacedDigit()
+            Label {
+                Text(
+                    showsZeroRepEmptyState
+                        ? "No reps detected"
+                        : "Set \(completedSet.ordinal) ready for review"
+                )
+            } icon: {
+                Image(
+                    systemName: showsZeroRepEmptyState
+                        ? "exclamationmark.circle.fill"
+                        : "checkmark.circle.fill"
+                )
+                .foregroundStyle(showsZeroRepEmptyState ? Color.orange : Color.green)
             }
+            .font(.headline)
 
-            Text("Load × current counted reps")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            ReviewResultHero(
+                load: formattedLoad(completedSet.load),
+                countedReps: countedReps
+            )
+
+            if showsZeroRepEmptyState {
+                ZeroRepReviewNotice(setOrdinal: completedSet.ordinal)
+
+                if !isEditingReview {
+                    Button("Discard and Retry Set \(completedSet.ordinal)", role: .destructive) {
+                        discardActiveSet()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(.red)
+                    .frame(maxWidth: .infinity)
+                }
+            }
 
             if analysis.provisionalCountedReps != analysis.finalizedCountedReps {
                 Label(
@@ -608,12 +892,13 @@ private struct BackSquatQuickSessionView: View {
             }
 
             if completedSet.setupGateOutcome?.requiresLowConfidenceLabel == true {
-                Label(
-                    "Low-confidence capture — setup was overridden",
-                    systemImage: "exclamationmark.triangle.fill"
-                )
+                Label {
+                    Text("Low-confidence capture — setup was overridden")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
             }
 
             if isEditingReview {
@@ -625,6 +910,7 @@ private struct BackSquatQuickSessionView: View {
                     Label("Edit results", systemImage: "pencil")
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.large)
             }
 
             Divider()
@@ -635,10 +921,10 @@ private struct BackSquatQuickSessionView: View {
 
                 switch cleanResult {
                 case let .analyzerAssessed(cleanReps):
-                    Text("\(cleanReps) clean reps")
+                    Text("\(cleanReps) clean \(cleanReps == 1 ? "rep" : "reps")")
                         .font(.title2.bold())
                 case let .userCorrected(cleanReps):
-                    Text("\(cleanReps) clean reps")
+                    Text("\(cleanReps) clean \(cleanReps == 1 ? "rep" : "reps")")
                         .font(.title2.bold())
                     Label("User corrected — not analyzer evidence", systemImage: "person.fill.checkmark")
                         .font(.footnote.weight(.semibold))
@@ -696,8 +982,18 @@ private struct BackSquatQuickSessionView: View {
                 Text("Apply or cancel edits before continuing.")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
-            } else if activeCapture.discardConfirmationRequired {
-                discardConfirmation
+            } else if showsZeroRepEmptyState {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        zeroRepKeepButton
+                        reviewEndWorkoutButton
+                    }
+
+                    VStack(spacing: 12) {
+                        zeroRepKeepButton
+                        reviewEndWorkoutButton
+                    }
+                }
             } else {
                 Button("Next Set") {
                     advanceAfterStoppedSet()
@@ -706,63 +1002,113 @@ private struct BackSquatQuickSessionView: View {
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
 
-                HStack(spacing: 12) {
-                    Button("Discard", role: .destructive) {
-                        discardActiveSet()
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        reviewDiscardButton
+                        reviewEndWorkoutButton
                     }
-                    .buttonStyle(.bordered)
 
-                    Button("End Workout") {
-                        endSession()
+                    VStack(spacing: 12) {
+                        reviewDiscardButton
+                        reviewEndWorkoutButton
                     }
-                    .buttonStyle(.bordered)
                 }
             }
         }
         .padding(18)
-        .background(.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            (showsZeroRepEmptyState ? Color.orange : Color.green).opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 16)
+        )
+    }
+
+    private var zeroRepKeepButton: some View {
+        Button("Keep 0 Reps and Continue") {
+            advanceAfterStoppedSet()
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var reviewEndWorkoutButton: some View {
+        Button("End Workout") {
+            endSession()
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var reviewDiscardButton: some View {
+        Button("Discard", role: .destructive) {
+            discardActiveSet()
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .frame(maxWidth: .infinity)
     }
 
     private func reviewEditor(for completedSet: CompletedSetSummary) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let loadInputLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+        let actionLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Edit results")
                 .font(.headline)
 
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Load")
-                    .frame(width: 70, alignment: .leading)
-                TextField("Weight", text: $reviewLoadText)
-                    .keyboardType(.decimalPad)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isReviewEditFieldFocused)
-                    .accessibilityLabel("Corrected load value")
-                Picker("Unit", selection: $reviewLoadUnit) {
-                    ForEach(LoadUnit.allCases) { unit in
-                        Text(unit.rawValue).tag(unit)
+                    .font(.subheadline.weight(.semibold))
+
+                loadInputLayout {
+                    TextField("Weight", text: $reviewLoadText)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .reviewLoad)
+                        .frame(minHeight: 44)
+                        .accessibilityLabel("Corrected load value")
+                        .accessibilityHint("Enter a number zero or greater.")
+
+                    Picker("Unit", selection: $reviewLoadUnit) {
+                        ForEach(LoadUnit.allCases) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .frame(
+                        maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 150
+                    )
+                    .frame(minHeight: 44)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 110)
             }
 
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Counted")
-                    .frame(width: 70, alignment: .leading)
+                    .font(.subheadline.weight(.semibold))
                 TextField("Reps", text: $reviewCountedRepsText)
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
-                    .focused($isReviewEditFieldFocused)
+                    .focused($focusedField, equals: .reviewCountedReps)
+                    .frame(minHeight: 44)
                     .accessibilityLabel("Corrected counted reps")
+                    .accessibilityHint("Enter a whole number zero or greater.")
             }
 
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Clean")
-                    .frame(width: 70, alignment: .leading)
+                    .font(.subheadline.weight(.semibold))
                 TextField("Unavailable", text: $reviewCleanRepsText)
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
-                    .focused($isReviewEditFieldFocused)
+                    .focused($focusedField, equals: .reviewCleanReps)
+                    .frame(minHeight: 44)
                     .accessibilityLabel("Corrected clean reps")
+                    .accessibilityHint("Leave blank to preserve unavailable evidence, or enter a whole number.")
             }
 
             Text("Leave clean reps blank to keep the current status. Entering a number records user evidence, not analyzer evidence.")
@@ -770,21 +1116,23 @@ private struct BackSquatQuickSessionView: View {
                 .foregroundStyle(.secondary)
 
             if let reviewEditError {
-                Text(reviewEditError)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                ValidationCallout(message: reviewEditError)
             }
 
-            HStack(spacing: 12) {
+            actionLayout {
                 Button("Cancel") {
                     resetReviewEditor()
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
 
                 Button("Apply edits") {
                     applyReviewEdits(to: completedSet)
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(14)
@@ -804,13 +1152,19 @@ private struct BackSquatQuickSessionView: View {
         let trimmedLoad = reviewLoadText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let loadValue = Double(trimmedLoad),
               let correctedLoad = try? TrainingLoad(value: loadValue, unit: reviewLoadUnit) else {
-            reviewEditError = "Load must be a number zero or greater."
+            setReviewEditError(
+                "Load must be a number zero or greater.",
+                focus: .reviewLoad
+            )
             return
         }
 
         let trimmedCounted = reviewCountedRepsText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let correctedCountedReps = Int(trimmedCounted), correctedCountedReps >= 0 else {
-            reviewEditError = "Counted reps must be a whole number zero or greater."
+            setReviewEditError(
+                "Counted reps must be a whole number zero or greater.",
+                focus: .reviewCountedReps
+            )
             return
         }
 
@@ -821,18 +1175,27 @@ private struct BackSquatQuickSessionView: View {
         } else if let cleanReps = Int(trimmedClean), cleanReps >= 0 {
             correctedCleanReps = cleanReps
         } else {
-            reviewEditError = "Clean reps must be a whole number zero or greater, or left blank."
+            setReviewEditError(
+                "Clean reps must be a whole number zero or greater, or left blank.",
+                focus: .reviewCleanReps
+            )
             return
         }
 
         guard let currentCountedReps = completedSet.countedReps else {
-            reviewEditError = "This set no longer has a reviewable counted-rep result."
+            setReviewEditError(
+                "This set no longer has a reviewable counted-rep result.",
+                focus: nil
+            )
             return
         }
         let currentCleanReps = cleanRepCount(from: completedSet.cleanResult)
         let resultingCleanReps = correctedCleanReps ?? currentCleanReps
         guard resultingCleanReps.map({ $0 <= correctedCountedReps }) ?? true else {
-            reviewEditError = "Clean reps cannot exceed counted reps."
+            setReviewEditError(
+                "Clean reps cannot exceed counted reps.",
+                focus: .reviewCleanReps
+            )
             return
         }
 
@@ -872,7 +1235,10 @@ private struct BackSquatQuickSessionView: View {
 
             guard let correctedSet = session.completedSets.last,
                   correctedSet.id == completedSet.id else {
-                reviewEditError = "The reviewed set could not be refreshed."
+                setReviewEditError(
+                    "The reviewed set could not be refreshed.",
+                    focus: nil
+                )
                 return
             }
             reviewedSet = correctedSet
@@ -881,19 +1247,37 @@ private struct BackSquatQuickSessionView: View {
         } catch let error as SetCorrectionError {
             switch error {
             case .negativeCount:
-                reviewEditError = "Rep counts must be zero or greater."
+                setReviewEditError(
+                    "Rep counts must be zero or greater.",
+                    focus: .reviewCountedReps
+                )
             case .cleanRepsExceedCounted:
-                reviewEditError = "Clean reps cannot exceed counted reps."
+                setReviewEditError(
+                    "Clean reps cannot exceed counted reps.",
+                    focus: .reviewCleanReps
+                )
             }
         } catch {
-            reviewEditError = "This set is no longer available to edit."
+            setReviewEditError(
+                "This set is no longer available to edit.",
+                focus: nil
+            )
         }
+    }
+
+    private func setReviewEditError(
+        _ message: String,
+        focus: SessionFieldFocus?
+    ) {
+        reviewEditError = message
+        focusedField = focus
+        AccessibilityNotification.Announcement("Error. \(message)").post()
     }
 
     private func resetReviewEditor() {
         isEditingReview = false
         reviewEditError = nil
-        isReviewEditFieldFocused = false
+        focusedField = nil
     }
 
     private func cleanRepCount(from result: ReviewedSetCleanResult?) -> Int? {
@@ -982,19 +1366,26 @@ private struct BackSquatQuickSessionView: View {
             EmptyView()
 
         case .visibilityConfirmationRequired:
+            let confirmationLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(spacing: 12))
+
             VStack(alignment: .leading, spacing: 12) {
                 Text("Can't see full body. Start anyway?")
                     .font(.headline)
-                HStack {
+
+                confirmationLayout {
                     Button("Reset") {
                         resetSetup()
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.large)
 
                     Button("Start Anyway") {
                         startAnywayAfterCountdown()
                     }
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                 }
             }
             .padding(16)
@@ -1008,13 +1399,14 @@ private struct BackSquatQuickSessionView: View {
     private var armingControls: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button("Arm set") {
-                isLoadFieldFocused = false
+                focusedField = nil
                 armStart(mode: .waitForPassingSetup)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .frame(maxWidth: .infinity)
-            .disabled(!hasEnteredLoad)
+            .disabled(!canArmSet)
+            .accessibilityHint("Locks the entered load, then waits for passing setup checks.")
 
             Text("Locks your load, then waits while you prop the phone and walk into frame. Countdown starts when all checks are green.")
                 .font(.footnote)
@@ -1028,19 +1420,23 @@ private struct BackSquatQuickSessionView: View {
                 .font(.footnote)
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+                .accessibilityHint("Shows the low-confidence setup override.")
 
                 if showWeakSetupOption {
                     Button("Accept weak setup") {
-                        isLoadFieldFocused = false
+                        focusedField = nil
                         armStart(mode: .waitForEvaluatedSetupAllowingOverride)
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.large)
                     .tint(.orange)
-                    .disabled(!hasEnteredLoad)
+                    .disabled(!canArmSet)
 
                     Text("Different from Arm set: countdown can begin even if some checks stay red. That set is labeled low-confidence.")
                         .font(.footnote)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.primary)
                 }
             }
 
@@ -1050,10 +1446,10 @@ private struct BackSquatQuickSessionView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let loadEntryError {
-                Text(loadEntryError)
+            if cameraFailureMessage != nil {
+                Label("Camera access must be available before the set can be armed.", systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.primary)
             }
         }
     }
@@ -1061,7 +1457,11 @@ private struct BackSquatQuickSessionView: View {
     private var armedWaitingControls: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Armed — walk into frame")
+                Text(
+                    cameraFailureMessage == nil
+                        ? "Armed — walk into frame"
+                        : "Arming paused — camera unavailable"
+                )
                     .font(.headline)
                 Spacer()
                 Text(passingCheckSummaryText)
@@ -1069,7 +1469,11 @@ private struct BackSquatQuickSessionView: View {
                     .foregroundStyle(setupController.assessment.isReady ? .green : .secondary)
             }
 
-            Text(armedWaitingDetail)
+            Text(
+                cameraFailureMessage == nil
+                    ? armedWaitingDetail
+                    : "Cancel arming, then restore camera access before trying again."
+            )
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -1079,6 +1483,7 @@ private struct BackSquatQuickSessionView: View {
                 cues.stop()
             }
             .buttonStyle(.bordered)
+            .controlSize(.large)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1105,7 +1510,7 @@ private struct BackSquatQuickSessionView: View {
     private func armStart(mode: StartSetArmingMode) {
         let trimmedLoad = loadText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let value = Double(trimmedLoad) else {
-            loadEntryError = "Enter a valid numeric load."
+            presentLoadEntryError("Enter a valid numeric load.")
             return
         }
 
@@ -1114,13 +1519,20 @@ private struct BackSquatQuickSessionView: View {
             try session.setCurrentSetLoad(load)
             startArming.arm(mode)
             loadEntryError = nil
+            sessionNotice = nil
             showWeakSetupOption = false
             tryBeginArmedCountdownIfReady()
         } catch TrainingLoadError.invalidValue {
-            loadEntryError = "Load must be zero or greater."
+            presentLoadEntryError("Load must be zero or greater.")
         } catch {
             assertionFailure("An active quick session should accept load before arming: \(error)")
         }
+    }
+
+    private func presentLoadEntryError(_ message: String) {
+        loadEntryError = message
+        focusedField = .load
+        AccessibilityNotification.Announcement("Error. \(message)").post()
     }
 
     private func tryBeginArmedCountdownIfReady() {
@@ -1237,11 +1649,11 @@ private struct BackSquatQuickSessionView: View {
                     retainedPoseSequence = nil
                     processingError = switch error {
                     case .eventDeliveryDropped:
-                        "Live pose delivery could not remain lossless. Partial evidence was discarded."
+                        "Some camera analysis data was missed, so this set can’t be reviewed reliably."
                     case .retentionLimitExceeded:
-                        "Capture exceeded the active-set in-memory safety limit. Partial evidence was discarded."
+                        "This capture exceeded the 10-minute safety limit and can’t be reviewed."
                     case .invalidPhase:
-                        "The active-set pose sequence could not be frozen. Partial evidence was discarded."
+                        "This capture couldn’t be prepared for review."
                     }
                     try? activeCapture.failProcessing()
                 } catch {
@@ -1249,7 +1661,7 @@ private struct BackSquatQuickSessionView: View {
                         return
                     }
                     retainedPoseSequence = nil
-                    processingError = "The active-set pose sequence could not be frozen. Partial evidence was discarded."
+                    processingError = "This capture couldn’t be prepared for review."
                     try? activeCapture.failProcessing()
                 }
             }
@@ -1274,7 +1686,7 @@ private struct BackSquatQuickSessionView: View {
 
     private func finalizeRetainedPoseSequence() {
         guard let retainedPoseSequence else {
-            processingError = "No retained pose sequence is available for finalization."
+            processingError = "This capture is no longer available for processing."
             if activeCapture.phase == .processing {
                 try? activeCapture.failProcessing()
             }
@@ -1308,7 +1720,7 @@ private struct BackSquatQuickSessionView: View {
                 processingError = nil
                 self.retainedPoseSequence = nil
             } catch {
-                processingError = "The retained sequence could not be converted into a review result."
+                processingError = "This capture couldn’t be converted into a review result."
                 if activeCapture.phase == .processing {
                     try? activeCapture.failProcessing()
                 }
@@ -1333,11 +1745,11 @@ private struct BackSquatQuickSessionView: View {
             try activeCapture.stop()
             switch failure {
             case .retentionLimitExceeded:
-                processingError = "Capture exceeded the 10-minute or 18,000-frame in-memory safety limit. Partial pose evidence was discarded."
+                processingError = "This capture exceeded the 10-minute safety limit and can’t be reviewed."
             case .eventDeliveryDropped:
-                processingError = "Live pose delivery could not remain lossless. Partial pose evidence was discarded."
+                processingError = "Some camera analysis data was missed, so this set can’t be reviewed reliably."
             case .invalidPhase:
-                processingError = "Active-set pose ingestion stopped unexpectedly. Partial pose evidence was discarded."
+                processingError = "Camera analysis stopped unexpectedly, so this set can’t be reviewed reliably."
             }
             try activeCapture.failProcessing()
         } catch {
@@ -1383,6 +1795,65 @@ private struct BackSquatQuickSessionView: View {
         )
     }
 
+    private var discardConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { activeCapture.discardConfirmationRequired },
+            set: { isPresented in
+                if !isPresented {
+                    activeCapture.cancelDiscardConfirmation()
+                }
+            }
+        )
+    }
+
+    private var discardConfirmationMessage: String {
+        let detectedRepCount = activeCapture.finalizedCountedReps
+            ?? activeCapture.provisionalCountedReps
+        switch activeCapture.phase {
+        case .recording where detectedRepCount > 0:
+            let repNoun = detectedRepCount == 1 ? "rep" : "reps"
+            return "The live count shows \(detectedRepCount) provisional \(repNoun). Discarding stops and removes this capture."
+        case .processing where detectedRepCount > 0,
+             .processingFailed where detectedRepCount > 0:
+            let repNoun = detectedRepCount == 1 ? "rep" : "reps"
+            return "This capture contains \(detectedRepCount) provisional \(repNoun). Discarding removes it before review."
+        case .processingFailed:
+            return "This capture could not be finalized and may still contain reps. Discarding removes it without a review."
+        case .awaitingReview where detectedRepCount > 0:
+            let repNoun = detectedRepCount == 1 ? "rep" : "reps"
+            return "Final analysis detected \(detectedRepCount) counted \(repNoun). Discarding removes this set and any edits from the current workout."
+        case .awaitingReview:
+            return "Final analysis detected no counted reps. Discarding removes this zero-rep set from the current workout."
+        case .processing:
+            return "Final rep detection is still finishing, so this capture may contain reps. Discarding removes it before review."
+        case .recording:
+            return "No provisional reps are visible yet. Discarding stops and removes this capture."
+        case .idle, .discarded:
+            return "Discarding removes this capture."
+        }
+    }
+
+    private var discardAlertTitle: String {
+        activeCapture.phase == .awaitingReview ? "Discard set?" : "Discard capture?"
+    }
+
+    private var discardCancelButtonTitle: String {
+        switch activeCapture.phase {
+        case .recording:
+            "Continue Recording"
+        case .processing, .processingFailed:
+            "Keep Capture"
+        case .awaitingReview:
+            "Keep Set"
+        case .idle, .discarded:
+            "Cancel"
+        }
+    }
+
+    private var discardConfirmButtonTitle: String {
+        activeCapture.phase == .awaitingReview ? "Discard Set" : "Discard Capture"
+    }
+
     private func discardActiveSet() {
         activeCapture.updateProvisionalCountedReps(
             setupController.activeSetPoseStatus.provisionalCountedReps
@@ -1410,6 +1881,10 @@ private struct BackSquatQuickSessionView: View {
     }
 
     private func finishDiscardedSet() {
+        let discardedReview = reviewedSet
+        let discardedSetOrdinal = discardedReview?.ordinal ?? session.currentSet.ordinal
+        let discardedReviewWasCorrected = !(discardedReview?.userCorrections.isEmpty ?? true)
+
         captureStopTask?.cancel()
         captureStopTask = nil
         processingTask?.cancel()
@@ -1440,6 +1915,19 @@ private struct BackSquatQuickSessionView: View {
             assertionFailure("An active session should allow discard reset: \(error)")
         }
         syncLoadEntryFromCurrentSet()
+        let notice = SessionNoticePresentation(
+            title: discardedReviewWasCorrected
+                ? "Corrected set discarded"
+                : (discardedReview == nil ? "Capture discarded" : "Set discarded"),
+            detail: discardedReview == nil
+                ? "Set \(discardedSetOrdinal) is ready to retry. Review the entered load before arming."
+                : "Set \(discardedSetOrdinal) was removed. Its load is restored for the retry.",
+            systemImage: "arrow.uturn.backward.circle.fill"
+        )
+        sessionNotice = notice
+        AccessibilityNotification.Announcement(
+            "\(notice.title). \(notice.detail)"
+        ).post()
         setupController.start()
     }
 
@@ -1463,6 +1951,7 @@ private struct BackSquatQuickSessionView: View {
         countdown.reset()
         setupController.resetEvidence()
         syncLoadEntryFromCurrentSet()
+        sessionNotice = nil
         setupController.start()
     }
 
@@ -1496,9 +1985,13 @@ private struct BackSquatQuickSessionView: View {
 
         return VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Workout complete", systemImage: "checkmark.circle.fill")
-                    .font(.title2.bold())
-                    .foregroundStyle(.green)
+                Label {
+                    Text("Workout complete")
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
+                .font(.title2.bold())
 
                 Text(exercise.displayName)
                     .font(.largeTitle.bold())
@@ -1516,12 +2009,15 @@ private struct BackSquatQuickSessionView: View {
             }
 
             if summary.lowConfidenceCaptureCount > 0 {
-                Label(
-                    "\(summary.lowConfidenceCaptureCount) low-confidence capture\(summary.lowConfidenceCaptureCount == 1 ? "" : "s")",
-                    systemImage: "exclamationmark.triangle.fill"
-                )
+                Label {
+                    Text(
+                        "\(summary.lowConfidenceCaptureCount) low-confidence capture\(summary.lowConfidenceCaptureCount == 1 ? "" : "s")"
+                    )
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
@@ -1532,35 +2028,12 @@ private struct BackSquatQuickSessionView: View {
                     .font(.headline)
 
                 ForEach(summary.sets) { set in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("Set \(set.ordinal)")
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Text(summarySetResult(set))
-                                .font(.title3.bold())
-                                .monospacedDigit()
-                        }
-
-                        Text(summaryCleanResult(set.cleanResult))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-
-                        switch set.captureConfidence {
-                        case .standard:
-                            EmptyView()
-                        case .low:
-                            Label("Low-confidence setup override", systemImage: "exclamationmark.triangle")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.orange)
-                        case .unavailable:
-                            Text("Capture confidence unavailable")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(14)
-                    .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                    SessionSummarySetRow(
+                        ordinal: set.ordinal,
+                        result: summarySetResult(set),
+                        cleanResult: summaryCleanResult(set.cleanResult),
+                        captureConfidence: set.captureConfidence
+                    )
                 }
             }
 
@@ -1580,6 +2053,7 @@ private struct BackSquatQuickSessionView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .frame(maxWidth: .infinity)
+            .accessibilityHint("Returns to Quick Start. This summary is not persisted yet.")
         }
         .padding()
     }
@@ -1626,6 +2100,285 @@ private struct BackSquatQuickSessionView: View {
     }
 }
 
+private struct WorkoutStatusCard: View {
+    let presentation: WorkoutStatusPresentation
+    let completedSetCount: Int
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: presentation.systemImage)
+                .font(.title2)
+                .foregroundStyle(presentation.tint)
+                .frame(width: 32, height: 32)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(presentation.title)
+                    .font(.headline)
+
+                Text(presentation.detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text(completedSetLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            presentation.tint.opacity(0.12),
+            in: RoundedRectangle(cornerRadius: 14)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(presentation.title)
+        .accessibilityValue("\(presentation.detail) \(completedSetLabel).")
+    }
+
+    private var completedSetLabel: String {
+        let noun = completedSetCount == 1 ? "set" : "sets"
+        return "\(completedSetCount) completed \(noun)"
+    }
+}
+
+private struct SessionNoticeCard: View {
+    let presentation: SessionNoticePresentation
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: presentation.systemImage)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(presentation.title)
+                    .font(.subheadline.weight(.semibold))
+                Text(presentation.detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss status")
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 4)
+        .padding(.vertical, 8)
+        .background(.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct CameraAvailabilityCallout: View {
+    let title: String
+    let detail: String
+    let isLoading: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
+            } else {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            (isLoading ? Color.blue : Color.orange).opacity(0.10),
+            in: RoundedRectangle(cornerRadius: 12)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(detail)
+    }
+}
+
+private struct ValidationCallout: View {
+    let message: String
+
+    var body: some View {
+        Label {
+            Text(message)
+        } icon: {
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.red)
+        }
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(.primary)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.red.opacity(0.45), lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Error: \(message)")
+    }
+}
+
+private struct ReviewResultHero: View {
+    let load: String
+    let countedReps: Int
+    @ScaledMetric(relativeTo: .title) private var loadSize = 34
+    @ScaledMetric(relativeTo: .largeTitle) private var countSize = 54
+
+    var body: some View {
+        let repNoun = countedReps == 1 ? "rep" : "reps"
+
+        VStack(alignment: .leading, spacing: 5) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(load)
+                        .font(.system(size: loadSize, weight: .bold, design: .rounded))
+                    Text("×")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("\(countedReps)")
+                        .font(.system(size: countSize, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(load)
+                        .font(.title.bold())
+                    Text("\(countedReps) counted \(repNoun)")
+                        .font(.largeTitle.bold())
+                        .monospacedDigit()
+                }
+            }
+
+            Text("Load × current counted reps")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(load), \(countedReps) counted \(repNoun)")
+    }
+}
+
+private struct ZeroRepReviewNotice: View {
+    let setOrdinal: Int
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("No completed squat cycle was found")
+                    .font(.subheadline.weight(.semibold))
+                Text("Discard and retry keeps an accidental capture out of this workout.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: "arrow.counterclockwise.circle.fill")
+                .foregroundStyle(.orange)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "No reps detected for Set \(setOrdinal). Discard and retry keeps an accidental capture out of this workout."
+        )
+    }
+}
+
+private struct SessionSummarySetRow: View {
+    let ordinal: Int
+    let result: String
+    let cleanResult: String
+    let captureConfidence: SessionSetCaptureConfidence
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Set \(ordinal)")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text(result)
+                        .font(.title3.bold())
+                        .monospacedDigit()
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Set \(ordinal)")
+                        .font(.subheadline.weight(.semibold))
+                    Text(result)
+                        .font(.title3.bold())
+                        .monospacedDigit()
+                }
+            }
+
+            Text(cleanResult)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            switch captureConfidence {
+            case .standard:
+                EmptyView()
+            case .low:
+                Label {
+                    Text("Low-confidence setup override")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.primary)
+            case .unavailable:
+                Text("Capture confidence unavailable")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
+    }
+
+    private var accessibilityDescription: String {
+        let captureDescription = switch captureConfidence {
+        case .standard:
+            "Standard capture confidence."
+        case .low:
+            "Low-confidence setup override."
+        case .unavailable:
+            "Capture confidence unavailable."
+        }
+        return "Set \(ordinal), \(result). \(cleanResult). \(captureDescription)"
+    }
+}
+
 private struct SetupCheckRow: View {
     let check: SetupCheck
 
@@ -1645,7 +2398,8 @@ private struct SetupCheckRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
     }
 
     private var iconName: String {
@@ -1679,5 +2433,23 @@ private struct SetupCheckRow: View {
         case .failing:
             check.id.failureFix
         }
+    }
+
+    private var accessibilityStatus: String {
+        switch check.status {
+        case .pending:
+            "pending"
+        case .passing:
+            "ready"
+        case .failing:
+            "needs attention"
+        }
+    }
+
+    private var accessibilityDescription: String {
+        if check.status == .passing {
+            return "\(check.id.displayName), \(accessibilityStatus)."
+        }
+        return "\(check.id.displayName), \(accessibilityStatus). \(detailText)"
     }
 }

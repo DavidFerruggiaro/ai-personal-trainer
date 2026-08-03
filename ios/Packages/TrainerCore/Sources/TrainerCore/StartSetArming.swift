@@ -1,62 +1,89 @@
 import Foundation
 
-public enum StartSetArmingMode: Equatable, Sendable {
-    /// Wait until every setup check is passing, then begin countdown.
-    case waitForPassingSetup
-    /// Wait until checks leave pending; begin with override if any are failing.
-    case waitForEvaluatedSetupAllowingOverride
-}
-
 public enum StartSetArmingState: Equatable, Sendable {
     case idle
-    case armed(StartSetArmingMode)
+    case armed
+    case weakSetupDecision(SetupGateAssessment)
 }
 
-public enum StartSetLaunch: Equatable, Sendable {
-    case approve
-    case overrideFailures
-}
-
-/// Deliberate pre-start arming so the lifter can leave the phone propped up.
+/// Deliberate pre-start arming so a solo lifter can leave the phone propped up.
 ///
-/// Setup becoming ready must not start a set by itself. The user arms first,
-/// walks into frame, and countdown begins only after the armed mode's setup
-/// condition is met.
+/// Passing setup may start countdown immediately after arming. Evaluated failures
+/// wait through a positioning grace period, then latch until the user explicitly
+/// retries, accepts low-confidence setup, or cancels.
 public struct StartSetArming: Equatable, Sendable {
     public private(set) var state: StartSetArmingState
+    public let weakSetupGraceDuration: TimeInterval
+    private var armedAt: Date?
 
-    public init() {
+    public init(weakSetupGraceDuration: TimeInterval = 10) {
+        precondition(weakSetupGraceDuration >= 0)
         state = .idle
+        self.weakSetupGraceDuration = weakSetupGraceDuration
+        armedAt = nil
     }
 
     public var isArmed: Bool {
-        if case .armed = state {
-            return true
-        }
-        return false
+        state != .idle
     }
 
-    public mutating func arm(_ mode: StartSetArmingMode) {
-        state = .armed(mode)
+    public var latchedWeakSetup: SetupGateAssessment? {
+        guard case let .weakSetupDecision(assessment) = state else {
+            return nil
+        }
+        return assessment
+    }
+
+    public mutating func arm(at armedAt: Date = Date()) {
+        state = .armed
+        self.armedAt = armedAt
     }
 
     public mutating func cancel() {
         state = .idle
+        armedAt = nil
     }
 
-    public func launchIfReady(given assessment: SetupGateAssessment) -> StartSetLaunch? {
-        guard case let .armed(mode) = state else {
+    public mutating func retryWeakSetup(at armedAt: Date = Date()) {
+        guard latchedWeakSetup != nil else {
+            return
+        }
+        arm(at: armedAt)
+    }
+
+    public mutating func acceptWeakSetup(
+        at decidedAt: Date = Date()
+    ) throws -> SetupGateOutcome {
+        guard let latchedWeakSetup else {
+            throw SetupGateError.overrideUnavailable
+        }
+        let outcome = try latchedWeakSetup.overrideFailures(at: decidedAt)
+        cancel()
+        return outcome
+    }
+
+    /// Observes the latest evaluated setup.
+    ///
+    /// Returns the passing assessment that may begin countdown. Failing evidence
+    /// is latched only after the solo-positioning grace period and never launches
+    /// without an explicit `acceptWeakSetup` call.
+    public mutating func observe(
+        _ assessment: SetupGateAssessment,
+        at observedAt: Date = Date()
+    ) -> SetupGateAssessment? {
+        guard state == .armed else {
             return nil
         }
-
-        switch mode {
-        case .waitForPassingSetup:
-            return assessment.isReady ? .approve : nil
-        case .waitForEvaluatedSetupAllowingOverride:
-            guard !assessment.hasPendingChecks else {
-                return nil
-            }
-            return assessment.isReady ? .approve : .overrideFailures
+        if assessment.isReady {
+            return assessment
         }
+        guard !assessment.hasPendingChecks,
+              !assessment.failedChecks.isEmpty,
+              let armedAt,
+              observedAt.timeIntervalSince(armedAt) >= weakSetupGraceDuration else {
+            return nil
+        }
+        state = .weakSetupDecision(assessment)
+        return nil
     }
 }

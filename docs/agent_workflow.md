@@ -23,11 +23,12 @@ Use this as the operating rhythm for future agents and implementation sessions.
    - `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
    - `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`
    - `docs/design_reviews/2026-07-24_native_verification_harness.md`
+   - `docs/design_reviews/2026-08-03_m2_physical_acceptance.md`
 
 2. Identify the current milestone.
    - Default current milestone: **Milestone 2, Back Squat Vertical Slice** (M1 bakeoff complete; MediaPipe selected).
-   - Current code boundary: M2.11 essential corrections, M2.14a summary projection, M2.V1 deterministic verification, and the analysis-summary mapping seam are complete. M2.9/M2.10/M2.12, parent M2.14, and parts of M2.5-M2.7 retain documented physical or product gates.
-   - Do not infer a next implementation ticket from ticket number alone. Read `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` and get the user's scope choice.
+   - Current code boundary: M2.1-M2.5, M2.7-M2.9, M2.11, M2.12, M2.14a, M2.V1, and the analysis-summary mapping seam are complete. M2.6 retains countdown-choice/failure and measured transition-latency work; M2.10 retains real clean-evidence gates; parent M2.14 retains its deferred natural multi-set physical check.
+   - M2.6 transition instrumentation is complete and a stable-preview-identity candidate is installed; physical confirmation is deferred until a natural set. Do not infer later implementation work from ticket number alone.
 
 3. Pick one small ticket.
    - Prefer the next ticket in `docs/native_rebuild_agent_handoff.md` / `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.

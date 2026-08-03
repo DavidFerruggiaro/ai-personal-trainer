@@ -8,5 +8,9 @@ final class TrainerSessionCues {
         UIImpactFeedbackGenerator(style: style).impactOccurred()
     }
 
+    func recordingStarted() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
     func stop() {}
 }

@@ -216,10 +216,10 @@ private struct BackSquatQuickSessionView: View {
     @State private var reviewCleanRepsText = ""
     @State private var reviewEditError: String?
     @State private var processingError: String?
+    @State private var armingEvaluationTask: Task<Void, Never>?
     @State private var countdownTask: Task<Void, Never>?
     @State private var captureStopTask: Task<Void, Never>?
     @State private var processingTask: Task<Void, Never>?
-    @State private var showWeakSetupOption = false
     @State private var sessionNotice: SessionNoticePresentation?
     @StateObject private var setupController = TrainerSetupGateController()
     private let cues = TrainerSessionCues()
@@ -342,6 +342,14 @@ private struct BackSquatQuickSessionView: View {
                     tint: .orange
                 )
             }
+            if startArming.latchedWeakSetup != nil {
+                return WorkoutStatusPresentation(
+                    title: "Setup needs attention",
+                    detail: "Return to the phone to retry or start with low-confidence setup.",
+                    systemImage: "exclamationmark.triangle.fill",
+                    tint: .orange
+                )
+            }
             if startArming.isArmed {
                 return WorkoutStatusPresentation(
                     title: "Set armed",
@@ -411,20 +419,23 @@ private struct BackSquatQuickSessionView: View {
                         }
                     }
 
-                    if isCapturingSet {
+                    if !isPostCaptureFlow {
+                        if !isCapturingSet && !isArmedOrCounting {
+                            preCaptureSections
+                        }
                         cameraPreview
+                    }
+
+                    if isCapturingSet {
                         activeSetControls
                     } else if isPostCaptureFlow {
                         activeSetControls
                     } else if isArmedOrCounting {
-                        cameraPreview
                         countdownControls
                         if startArming.isArmed {
                             setupGateSection
                         }
                     } else {
-                        preCaptureSections
-                        cameraPreview
                         setupGateSection
                         countdownControls
                     }
@@ -469,6 +480,7 @@ private struct BackSquatQuickSessionView: View {
             }
         }
         .onDisappear {
+            armingEvaluationTask?.cancel()
             countdownTask?.cancel()
             captureStopTask?.cancel()
             processingTask?.cancel()
@@ -1400,7 +1412,7 @@ private struct BackSquatQuickSessionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Button("Arm set") {
                 focusedField = nil
-                armStart(mode: .waitForPassingSetup)
+                armStart()
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
@@ -1411,34 +1423,6 @@ private struct BackSquatQuickSessionView: View {
             Text("Locks your load, then waits while you prop the phone and walk into frame. Countdown starts when all checks are green.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-
-            if !setupController.assessment.hasPendingChecks,
-               !setupController.assessment.failedChecks.isEmpty {
-                Button(showWeakSetupOption ? "Hide weak-setup option" : "Setup looks weak — other options") {
-                    showWeakSetupOption.toggle()
-                }
-                .font(.footnote)
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .frame(minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-                .accessibilityHint("Shows the low-confidence setup override.")
-
-                if showWeakSetupOption {
-                    Button("Accept weak setup") {
-                        focusedField = nil
-                        armStart(mode: .waitForEvaluatedSetupAllowingOverride)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .tint(.orange)
-                    .disabled(!canArmSet)
-
-                    Text("Different from Arm set: countdown can begin even if some checks stay red. That set is labeled low-confidence.")
-                        .font(.footnote)
-                        .foregroundStyle(.primary)
-                }
-            }
 
             if !hasEnteredLoad {
                 Text("Enter a load before arming.")
@@ -1456,34 +1440,65 @@ private struct BackSquatQuickSessionView: View {
 
     private var armedWaitingControls: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
+            if let latchedWeakSetup = startArming.latchedWeakSetup {
+                Label("Setup needs attention", systemImage: "exclamationmark.triangle.fill")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+
+                Text(weakSetupFailureSummary(latchedWeakSetup))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Text("This result is saved while you return to the phone. Retry the checks, or start anyway with a low-confidence label.")
+                    .font(.footnote)
+                    .foregroundStyle(.primary)
+
+                Button("Retry Setup") {
+                    retryWeakSetup()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button("Start Anyway") {
+                    startWithLatchedWeakSetup()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .tint(.orange)
+
+                Button("Cancel Arming") {
+                    cancelArming()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            } else {
+                HStack {
+                    Text(
+                        cameraFailureMessage == nil
+                            ? "Armed — walk into frame"
+                            : "Arming paused — camera unavailable"
+                    )
+                        .font(.headline)
+                    Spacer()
+                    Text(passingCheckSummaryText)
+                        .font(.subheadline.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(setupController.assessment.isReady ? .green : .secondary)
+                }
+
                 Text(
                     cameraFailureMessage == nil
-                        ? "Armed — walk into frame"
-                        : "Arming paused — camera unavailable"
+                        ? "Leave the phone propped. Stand side-on until checks clear."
+                        : "Cancel arming, then restore camera access before trying again."
                 )
-                    .font(.headline)
-                Spacer()
-                Text(passingCheckSummaryText)
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(setupController.assessment.isReady ? .green : .secondary)
-            }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
 
-            Text(
-                cameraFailureMessage == nil
-                    ? armedWaitingDetail
-                    : "Cancel arming, then restore camera access before trying again."
-            )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            Button("Cancel") {
-                startArming.cancel()
-                loadEntryError = nil
-                cues.stop()
+                Button("Cancel") {
+                    cancelArming()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1496,18 +1511,14 @@ private struct BackSquatQuickSessionView: View {
         return "\(passing)/\(total)"
     }
 
-    private var armedWaitingDetail: String {
-        switch startArming.state {
-        case .idle:
-            ""
-        case .armed(.waitForPassingSetup):
-            "Leave the phone propped. Stand side-on until checks clear."
-        case .armed(.waitForEvaluatedSetupAllowingOverride):
-            "Leave the phone propped. Weak setup accepted; countdown can start with failed checks."
-        }
+    private func weakSetupFailureSummary(_ assessment: SetupGateAssessment) -> String {
+        let failures = assessment.failedChecks.map(\.id.displayName)
+        return failures.isEmpty
+            ? "Setup checks did not pass."
+            : "Needs attention: \(failures.joined(separator: ", "))."
     }
 
-    private func armStart(mode: StartSetArmingMode) {
+    private func armStart() {
         let trimmedLoad = loadText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let value = Double(trimmedLoad) else {
             presentLoadEntryError("Enter a valid numeric load.")
@@ -1517,10 +1528,10 @@ private struct BackSquatQuickSessionView: View {
         do {
             let load = try TrainingLoad(value: value, unit: loadUnit)
             try session.setCurrentSetLoad(load)
-            startArming.arm(mode)
+            startArming.arm()
             loadEntryError = nil
             sessionNotice = nil
-            showWeakSetupOption = false
+            scheduleWeakSetupEvaluation()
             tryBeginArmedCountdownIfReady()
         } catch TrainingLoadError.invalidValue {
             presentLoadEntryError("Load must be zero or greater.")
@@ -1538,36 +1549,62 @@ private struct BackSquatQuickSessionView: View {
     private func tryBeginArmedCountdownIfReady() {
         guard countdown.state == .idle,
               activeCapture.phase == .idle,
-              let launch = startArming.launchIfReady(given: setupController.assessment) else {
+              let passingAssessment = startArming.observe(setupController.assessment) else {
             return
         }
-        beginCountdown(from: launch)
+        do {
+            beginCountdown(after: try passingAssessment.approve())
+        } catch {
+            assertionFailure("A passing armed assessment should produce a setup outcome: \(error)")
+        }
     }
 
-    private func beginCountdown(from launch: StartSetLaunch) {
+    private func scheduleWeakSetupEvaluation() {
+        armingEvaluationTask?.cancel()
+        let delay = startArming.weakSetupGraceDuration
+        armingEvaluationTask = Task { @MainActor in
+            let nanoseconds = UInt64(delay * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled else { return }
+            tryBeginArmedCountdownIfReady()
+        }
+    }
+
+    private func retryWeakSetup() {
+        setupController.resetEvidence()
+        startArming.retryWeakSetup()
+        loadEntryError = nil
+        scheduleWeakSetupEvaluation()
+    }
+
+    private func startWithLatchedWeakSetup() {
         do {
-            let outcome: SetupGateOutcome
-            switch launch {
-            case .approve:
-                outcome = try setupController.assessment.approve()
-            case .overrideFailures:
-                outcome = try setupController.assessment.overrideFailures()
-            }
+            let outcome = try startArming.acceptWeakSetup()
+            beginCountdown(after: outcome)
+        } catch {
+            assertionFailure("Start Anyway requires a latched evaluated setup: \(error)")
+        }
+    }
+
+    private func cancelArming() {
+        armingEvaluationTask?.cancel()
+        armingEvaluationTask = nil
+        startArming.cancel()
+        loadEntryError = nil
+        cues.stop()
+    }
+
+    private func beginCountdown(after outcome: SetupGateOutcome) {
+        do {
             try session.setCurrentSetSetupGateOutcome(outcome)
+            armingEvaluationTask?.cancel()
+            armingEvaluationTask = nil
             startArming.cancel()
             countdown.start(after: outcome)
             loadEntryError = nil
             runCountdown()
-        } catch SetupGateError.checksPending {
-            // Keep armed; checks can flicker while the user settles.
-        } catch SetupGateError.checksFailing {
-            loadEntryError = "Fix setup, or open Setup looks weak — other options."
-            startArming.cancel()
-        } catch SetupGateError.overrideUnavailable {
-            // All checks passed after an override arm; retry as approve.
-            beginCountdown(from: .approve)
         } catch {
-            assertionFailure("Armed setup should launch countdown once ready: \(error)")
+            assertionFailure("An active session should accept an evaluated setup outcome: \(error)")
         }
     }
 
@@ -1609,6 +1646,7 @@ private struct BackSquatQuickSessionView: View {
             try setupController.beginActiveSetPoseIngestion()
             do {
                 try activeCapture.beginRecording()
+                cues.recordingStarted()
             } catch {
                 setupController.discardActiveSetPoseIngestion()
                 throw error
@@ -1867,6 +1905,8 @@ private struct BackSquatQuickSessionView: View {
         processingError = nil
         setupController.discardActiveSetPoseIngestion()
         activeCapture.reset()
+        armingEvaluationTask?.cancel()
+        armingEvaluationTask = nil
         startArming.cancel()
         countdown.reset()
         setupController.stop()
@@ -1909,6 +1949,8 @@ private struct BackSquatQuickSessionView: View {
         processingError = nil
         setupController.discardActiveSetPoseIngestion()
         activeCapture.reset()
+        armingEvaluationTask?.cancel()
+        armingEvaluationTask = nil
         startArming.cancel()
         countdown.reset()
         setupController.resetEvidence()
@@ -1928,6 +1970,8 @@ private struct BackSquatQuickSessionView: View {
     }
 
     private func resetSetup() {
+        armingEvaluationTask?.cancel()
+        armingEvaluationTask = nil
         countdownTask?.cancel()
         countdownTask = nil
         startArming.cancel()
@@ -2041,6 +2085,8 @@ private struct BackSquatQuickSessionView: View {
     private func endSession() {
         do {
             let summary = try session.end()
+            armingEvaluationTask?.cancel()
+            armingEvaluationTask = nil
             countdownTask?.cancel()
             countdownTask = nil
             captureStopTask?.cancel()

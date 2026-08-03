@@ -96,17 +96,38 @@ Result:
 
 ## Acceptance Audit
 
-- M2.5 remains `in_progress`. Normal propped-phone arming works, but the conditional pre-arm weak-setup override is not usable in the intended solo flow.
+- M2.5 was left `in_progress` by the original pass because the conditional pre-arm weak-setup override was not usable in the intended solo flow. The M2.5b follow-up below resolves and closes it.
 - M2.6 remains `in_progress`. Deliberate arming, automatic countdown, and automatic transition work, but duration choices remain unimplemented and the approximately 9-second post-countdown transition needs investigation.
 - M2.7 is closed as `done`: prior physical evidence covers analyzer-backed provisional counting, and this pass confirms automatic active capture, Stop, both active-discard paths, and the absence of a pause path.
 - M2.9 is closed as `done`: Stop removed the camera immediately, processing completed, review opened automatically, and no explicit save was required.
-- M2.10 remains `in_progress`: normal review passed physically, but required clean gates remain unimplemented and low-confidence override review is still physically unverified.
+- M2.10 remains `in_progress`: normal and low-confidence review now pass physically, but required clean gates remain unimplemented.
 - M2.11 remains `done`; its physical correction, validation, provenance, load-carry, and corrected-discard follow-up all passed.
 - M2.12 is closed as `done`: zero-rep active discard, detected-rep confirmation/cancel/confirm, and corrected review rollback all passed.
 - M2.14 remains `in_progress`; its physical multi-set summary check is deferred until a natural multi-set session.
 
 ## Selected Follow-up
 
-The next implementation slice is **M2.5b: reachable armed weak-setup recovery for a solo lifter**. It should preserve the deliberate `Arm set` interaction, latch an evaluated weak-setup decision after arming, and provide a persistent retry/start-anyway choice that remains reachable when the user returns to the phone. It must not silently override failures or require another person.
+The selected follow-up was **M2.5b: reachable armed weak-setup recovery for a solo lifter**. It preserved the deliberate `Arm set` interaction, latched an evaluated weak-setup decision after arming, and provided a persistent retry/start-anyway choice that remained reachable when the user returned to the phone.
 
 The approximately 9-second countdown-to-visible-recording delay is the next M2.6 investigation after M2.5b. The missing zero-rep notice on one attempt and the recovery-card/setup-card hierarchy notes remain presentation follow-ups rather than new scope for M2.5b.
+
+### Post-pass M2.5b implementation
+
+Status: done
+
+- The subsequent M2.5b slice removed the pre-arm weak-setup option and added a 10-second post-arm positioning grace followed by a persistent latched recovery decision.
+- Retry resets evidence and starts a fresh evaluation. Start Anyway derives low-confidence provenance from the saved failing assessment rather than the live checks observed after the user returns to the phone.
+- Seven focused arming tests pass; the complete harness passes with TrainerCore at 56 tests plus both workspace app builds.
+- This implementation was not part of commit `5276914` tested above. A signed replacement build was subsequently installed on the same iPhone 16 Pro Max.
+- The saved recovery card remained visible after the user returned to the phone. It still named `Phone stable` as failed while the live Camera Setup Gate underneath already showed `Phone stable — Ready`, proving that changed live evidence did not erase the latched result.
+- Retry restarted evaluation. A subsequent Start Anyway entered the existing countdown/capture path, finalized one counted rep, and reached review with `Low-confidence capture — setup was overridden`. Clean reps remained honestly unavailable.
+- M2.5b and parent M2.5 are closed. The approximately 9-second countdown-to-visible-recording transition is now the selected M2.6 investigation.
+
+### M2.6 transition diagnosis follow-up
+
+Status: instrumented and candidate implemented; physical confirmation deferred
+
+- An instrumented ordinary arm/countdown run reproduced an approximately 8-second perceived delay. Internally the countdown lasted 5.05 seconds, the domain entered recording in under 1 millisecond, and the first active pose observation was not retained until 9.04 seconds later. The live camera was not restarted at the boundary.
+- A narrow queued-event fast-forward experiment left both the user-visible behavior and the 9.04-second frame gap unchanged. It was removed along with all tagged instrumentation.
+- The strongest remaining explanation is main-thread camera-preview recreation when SwiftUI switches between duplicated countdown and recording branches. The cleaned candidate renders the preview from one stable structural location across those phases and adds a distinct success haptic at the recording boundary.
+- The candidate passes the complete native harness, builds/signs for the iPhone 16 Pro Max, and replaced the temporary instrumented build on the device. The user explicitly ended cumbersome testing for the day, so no physical success is claimed. Recheck during a natural future set rather than recreating the flow solely for acceptance.

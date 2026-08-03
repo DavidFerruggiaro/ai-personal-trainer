@@ -50,10 +50,10 @@ or End Workout -> Workout Summary -> Done
 ## Current Execution Boundary
 
 - M2.1-M2.4, M2.5a, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, M2.14a, and M2.V1 are done.
-- M2.5, M2.6, M2.10, and parent M2.14 retain the UX, timing, clean-evidence, or deferred physical gates documented in their result sections.
+- M2.6, M2.10, and parent M2.14 retain the timing, clean-evidence, or deferred physical gates documented in their result sections.
 - M2.13 persistence has not started; the M2.14a summary is transient and in memory only.
 - The 2026-08-03 physical pass is recorded in `docs/design_reviews/2026-08-03_m2_physical_acceptance.md`. Multi-set summary inspection is deliberately deferred until the next natural multi-set workout.
-- M2.5b reachable armed weak-setup recovery is the selected next implementation slice. The approximately 9-second countdown-to-visible-recording delay is the next M2.6 investigation after it.
+- M2.5b reachable armed weak-setup recovery passes both full native verification and the focused solo physical-device flow, closing parent M2.5. M2.6 transition instrumentation isolated the approximately 9-second delay and a cleaned preview-identity candidate is installed; physical confirmation is deferred until a natural future set.
 
 ## Tasks
 
@@ -306,7 +306,7 @@ Result:
 
 ### M2.5 Implement Setup Gate UI State
 
-Status: in_progress
+Status: done
 
 Goal:
 
@@ -358,7 +358,7 @@ Historical camera-independent progress (2026-07-10; superseded by live-signal pr
 - Exact pending instructions are: `Keep your head, hips, knees, and feet in frame.`, `Stand side-on so the camera can see squat depth.`, `Place the phone on a stable surface.`, and `Use clear lighting and keep your body unobstructed.`
 - Exact failure fixes are: `Move the phone back until your full body stays in frame.`, `Turn so your shoulder and hip line are side-on to the camera.`, `Set the phone down securely; do not hand-hold it.`, and `Improve the lighting and clear obstructions around your body.`
 - Four setup-gate tests were added with the camera-independent seam. Live signals and arming came later (see below).
-- M2.5 remains `in_progress` pending Arm-set UX discussion and a quick override/Stop device pass.
+- At this historical point, M2.5 remained `in_progress` pending Arm-set UX discussion and a quick override/Stop device pass.
 
 Live-signal progress (2026-07-10, post-checkpoint):
 
@@ -372,9 +372,10 @@ Live-signal progress (2026-07-10, post-checkpoint):
 - Verification: `PoseCore` tests pass; `TrainerCore` tests pass (29 as of arming work); Simulator and device builds pass for `TrainerApp`.
 - Physical verification (2026-07-11): propped-phone arm flow works. User armed, walked into frame, all four checks went green, countdown ran, live recording observed ~920 frames with pose overlay. Override path not yet exercised on device.
 - Open UX discussion: `Arm set` wording and post-arm waiting UI (camera must stay primary).
-- M2.5 remains `in_progress` until that UX discussion is settled and override/Stop paths get a quick device pass.
+- At this historical point, M2.5 remained `in_progress` until that UX discussion was settled and override/Stop paths received a device pass.
 - Physical acceptance (2026-08-03): the user reaffirmed that deliberate pre-position `Arm set` behavior matches solo gym use, and the normal arm/countdown/capture/Stop path passed. The weak-setup override did not: `Setup looks weak — other options` exists only before arming while all checks are evaluated and at least one is failing. Walking back from the evaluated position changes the live evidence, while the armed waiting UI offers only `Cancel`, making the override effectively unreachable for a solo lifter.
-- M2.5 remains `in_progress`; M2.5b is selected to fix that reachability gap without weakening the deliberate-start rule.
+- M2.5b was selected to fix that reachability gap without weakening the deliberate-start rule; its result is recorded below.
+- Final physical acceptance (2026-08-03): post-arm failed setup remained latched while the user returned to the phone, Retry restarted evaluation, Start Anyway launched the existing countdown/capture path, one rep finalized, and review displayed `Low-confidence capture — setup was overridden`. Together with the normal arm path and the automated evidence, this closes M2.5.
 
 ### M2.5a Preserve Unknown Side-View Evidence
 
@@ -395,9 +396,9 @@ Result (2026-07-12):
 
 ### M2.5b Make Weak-Setup Recovery Reachable After Arming
 
-Status: pending
+Status: done
 
-Selection: next implementation slice after the 2026-08-03 physical acceptance pass
+Selection: completed follow-up to the 2026-08-03 physical acceptance pass
 
 Goal:
 
@@ -423,6 +424,18 @@ Verification:
 - Public-behavior state tests for latch, retry, explicit override, and cancellation.
 - `TrainerApp` workspace build.
 - One focused solo physical-device pass through retry and Start Anyway into low-confidence review.
+
+Result (2026-08-03):
+
+- Replaced the unreachable pre-arm weak-setup option with one deliberate `Arm set` path.
+- Passing setup can still launch countdown immediately. Evaluated failures wait through a 10-second solo-positioning grace period so walking into frame does not prematurely stop arming.
+- After the grace period, failing setup is latched as an immutable assessment. Later live changes while the user returns to the phone cannot erase the saved failed-check evidence.
+- The armed recovery card names the latched failed checks and offers `Retry Setup`, `Start Anyway`, and `Cancel Arming`. Retry resets setup evidence and begins a fresh grace window. Start Anyway derives an overridden `SetupGateOutcome` from the latched assessment, preserving low-confidence failed-check provenance.
+- Seven public-behavior arming tests cover deliberate arming, transient failures, grace-period latching, latch persistence, retry, explicit low-confidence acceptance, and cancellation.
+- Full verification passes: PoseCore 4, SquatAnalysis 10, TrainerCore 56, TrainerRuntime 19, plus arm64 Simulator workspace builds of `TrainerApp` and `PoseBakeoff`.
+- The signed replacement build passed the focused solo device flow on an iPhone 16 Pro Max. The recovery card remained visible after the user returned; its saved `Phone stable` failure remained listed while the live gate underneath had already changed to `Ready`, directly demonstrating that live evidence could not erase the latch.
+- Retry restarted the armed evaluation. Start Anyway then reached capture, finalized one counted rep, and displayed `Low-confidence capture — setup was overridden` in review while leaving clean reps honestly unavailable.
+- M2.5b and parent M2.5 are done. M2.6's approximately 9-second countdown-to-visible-recording delay is selected next.
 
 ### M2.6 Add Start Set Countdown
 
@@ -476,6 +489,14 @@ Countdown / arming progress (2026-07-10 → 2026-07-11):
 - Physical arm→countdown→record succeeded once. Visibility-failure confirmation at countdown end not yet device-tested.
 - Open discussion: final arming copy and post-arm chrome.
 - Physical acceptance (2026-08-03): the normal armed setup triggered the countdown and recording automatically without a second tap, but the gap from countdown completion to visible recording state was approximately 9 seconds. M2.6 remains `in_progress`; after M2.5b, measure whether the delay is camera/runtime startup, main-thread work, or state feedback and make the recording boundary unambiguous.
+
+Transition diagnosis (2026-08-03):
+
+- A temporary timestamp build reproduced the user's approximately 8-second visible delay. The five-second countdown itself completed in 5.05 seconds, the countdown-to-domain-recording transition took under 1 millisecond, no camera restart occurred, and the first active pose observation was retained 9.04 seconds later.
+- A queued-observation fast-forward hypothesis produced the same 9.04-second gap and no user-visible improvement. That experiment and all temporary logging were removed rather than retained as ineffective complexity.
+- The strongest remaining code-local cause is the duplicated SwiftUI camera-preview expression across countdown and recording branches: changing phase can recreate and reattach an `AVCaptureVideoPreviewLayer` for the already-running session on the main thread. The candidate keeps one structural preview identity across setup/countdown/recording and adds a distinct success haptic immediately after the active recording boundary is established.
+- The cleaned candidate passes all four package suites and both workspace Simulator builds, builds and signs for the iPhone 16 Pro Max, and is installed on that device. The user ended cumbersome physical testing for the day, so this is not claimed as a physical fix yet.
+- Remaining M2.6 transition gate: during a natural future set, compare countdown end to the distinct haptic, visible `Recording set` state, and first counted motion. Duration choices and the existing visibility-failure behavior remain separately open under M2.6.
 
 ### M2.7 Add Active Set Capture State
 

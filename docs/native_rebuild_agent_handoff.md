@@ -72,9 +72,13 @@ Xcode 16.4
 Build version 16F6
 ```
 
-Corrected verification passes with Swift 6.1.2 and Xcode 16.4: `PoseCore` (1 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10), `TrainerCore` (53), `TrainerRuntime` (19), and host-architecture iOS Simulator builds of both `TrainerApp` and `PoseBakeoff` through `SquatTrainer.xcworkspace`. The harness canonicalizes one writable non-root scratch base and removes only its generated child before reporting success; it does not enforce a storage quota, so `NATIVE_VERIFY_SCRATCH_ROOT` should select a filesystem with sufficient free space. SwiftPM sandboxing stays enabled unless a caller explicitly opts out while already inside a trusted outer sandbox.
+Corrected verification passes with Swift 6.1.2 and Xcode 16.4: `PoseCore` (1 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10), `TrainerCore` (56), `TrainerRuntime` (19), and host-architecture iOS Simulator builds of both `TrainerApp` and `PoseBakeoff` through `SquatTrainer.xcworkspace`. The harness canonicalizes one writable non-root scratch base and removes only its generated child before reporting success; it does not enforce a storage quota, so `NATIVE_VERIFY_SCRATCH_ROOT` should select a filesystem with sufficient free space. SwiftPM sandboxing stays enabled unless a caller explicitly opts out while already inside a trusted outer sandbox.
 
 On 2026-08-03, the consolidated checkpoint also built and signed successfully for the connected iPhone 16 Pro Max, installed as `com.aiPersonalTrainer.TrainerApp`, and opened after the development profile was trusted. Physical acceptance then passed normal arm/countdown/capture/Stop/review, review corrections and validation, next-load carry-forward, zero/detected active discard, and corrected review rollback. M2.7, M2.9, and M2.12 are now done. The pass found an approximately 9-second countdown-to-visible-recording delay and proved that the pre-arm weak-setup override is not reachable in the intended solo flow. Multi-set summary inspection was deferred until a natural multi-set workout. See `docs/design_reviews/2026-08-03_m2_physical_acceptance.md`.
+
+A signed M2.5b replacement build subsequently passed its focused solo flow on the same device: failed setup latched after arming, remained visible when the user returned, survived live evidence changing, restarted through Retry, and reached a one-rep review through Start Anyway with `Low-confidence capture — setup was overridden`. M2.5b and parent M2.5 are done.
+
+The next M2.6 instrumented pass isolated the recording-transition delay: countdown timing was correct at 5.05 seconds and the domain entered recording in under 1 millisecond with no camera restart, but the first active pose observation arrived 9.04 seconds later. An event-fast-forward experiment had no effect and was removed. A cleaned candidate now keeps one SwiftUI camera-preview identity across countdown/recording and adds a distinct recording-start haptic. Full verification passes and the candidate is installed, but physical confirmation is deferred until a natural set at the user's request.
 
 The isolated 2026-07-25 UI pass also compiles cleanly for an arm64 Simulator, including its deterministic SwiftUI component previews, and all four package suites still pass. Transient Simulator launch screenshots covered only the root screen and large-text layout; they were inspected during the pass, were not retained as repository artifacts, and do not close any physical workout-flow gate.
 
@@ -203,19 +207,19 @@ Current M1 state:
 - The device protocol and measurement limitations are documented at `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 - The physical-device feasibility gate is cleared. The deliberate shared live-pose abstraction is now implemented in `PoseCore`, and `TrainerApp` consumes it through its own adapter rather than copying the `PoseBakeoff` harness directly.
 - M2.0 through M2.4 are complete.
-- M2.5–M2.7 are substantially implemented in `TrainerApp` and have had a first successful physical arm→countdown→record loop (~920 live frames observed). That run predated the M2.8 analyzer connection, so its 0 provisional reps were expected.
-- Open before closing M2.5–M2.7: UX discussion on `Arm set` wording + post-arm UI; confirm Stop/Discard on device; optional override-path device check.
+- M2.7 is done from combined automated and physical evidence. The user confirmed that deliberate pre-position `Arm set` behavior matches solo gym use; active capture, Stop, and both active-discard paths pass on device.
+- M2.5 and M2.5b are done. The unusable pre-arm weak-setup option is replaced by a 10-second post-arm positioning grace and persistent latched Retry/Start Anyway/Cancel decision; the full automated and focused solo device flows pass.
 - M2.8 live provisional counting is physically verified on one eight-rep set: all 8 completed reps counted, including one shallow rep; small test leg movements and walking back toward the phone produced no phantom reps. This validates the live integration and intended counted-vs-clean behavior for one run, not general accuracy.
 - The new detector calibrates standing, then requires confident one-leg evidence, knee flexion plus hip descent, ascent, and return near the standing reference. It does not use depth or absolute lockout as count gates. Clean depth/lockout/tempo states remain explicitly unassessed until later full-sequence analysis.
 - The rough M1 hip-dip detector remains bakeoff-only and is not wired into `TrainerApp`.
-- M2.9 now retains active-set pose frames in app memory, removes/stops the camera immediately on Stop, batch-finalizes from the full sequence off the main actor, maps analyzer output into `TrainerCore` summary types, and auto-saves the set in the in-memory session before review.
+- M2.9 is done. It retains active-set pose frames in app memory, removes/stops the camera immediately on Stop, batch-finalizes from the full sequence off the main actor, maps analyzer output into `TrainerCore` summary types, and auto-saves the set in the in-memory session before review; the full path passed on device.
 - The fake 600ms processing delay and temporary stopped card are gone. Processing has retry/discard failure handling, and in-flight processing can be discarded if it hangs.
 - M2.10 now shows a compact load × canonical-count review, discloses provisional/final differences, labels setup overrides low-confidence, and keeps `Next Set` primary with discard/end secondary.
 - Clean status remains honestly unavailable because depth/lockout/tempo gates are still unassessed. The review explicitly says unavailable is not `0 clean reps`; no missing evidence defaults to clean.
-- The adjacent M2.12 code slice is implemented: review discard rolls back the auto-saved in-memory set and canonical detected reps require confirmation. Physical Stop/review/discard verification remains open, and M2.10 remains `in_progress` under its clean-evidence guardrail.
-- M2.11 is complete by its offline verification target. `TrainerCore` preserves immutable original load/analyzer summaries, derives current values from ordered typed `user_edit` corrections, distinguishes manual clean evidence from analyzer evidence, rejects invalid counts without clamping, and keeps corrected review discard working.
+- M2.12 is done: zero-rep discard is immediate, canonical/provisional detected reps require confirmation, and corrected review discard rolls back the auto-saved set while restoring its ordinal/load. All three paths passed on device. Normal and low-confidence reviews pass physically; M2.10 remains `in_progress` only under its clean-evidence guardrail.
+- M2.11 is complete in both automated and physical verification. `TrainerCore` preserves immutable original load/analyzer summaries, derives current values from ordered typed `user_edit` corrections, distinguishes manual clean evidence from analyzer evidence, rejects invalid counts without clamping, and keeps corrected review discard working.
 - `TrainerApp` has a compact inline review editor for load, counted reps, and clean reps. Applying edits updates the already auto-saved in-memory set; no `Save Set` action or per-rep editing was added.
-- No more physical testing was available in the current night session. Manual review-edit inspection remains queued with the existing M2.9/M2.10/M2.12 device gates; do not start M2.13 as part of this M2.11 continuation.
+- Physical review-edit and low-confidence review inspection passed on 2026-08-03. Do not start M2.13 as part of the subsequent countdown-latency investigation.
 - M2.5a is done: the runtime adapter preserves unknown side-view evidence as `nil`, so startup/partial-visibility frames no longer bias the bounded setup window toward failure. Explicit `false` evidence still fails.
 - M2.7a is done: each emitted camera observation now enters setup/preview and active-set ingestion directly in the event consumer. SwiftUI is display-only for active pose status; it no longer delivers frames to the buffer/analyzer. A lock-protected start snapshot captures the source watermark and delivery-loss baseline together before runtime recording; monotonic source sequence numbers exclude pre-start observations, and a queued delivery boundary freezes all already-emitted observations at Stop.
 - The live-event stream is bounded to 120 newest events. Any event-delivery drop during active capture invalidates and clears partial pose evidence, preventing incomplete finalization. The controller keeps one stream consumer across ordinary Stop/Next Set cycles; only terminal view shutdown cancels it.
@@ -223,7 +227,7 @@ Current M1 state:
 - Active-set retention is explicitly bounded to 18,000 frames or 10 minutes. Overflow clears partial evidence and requires discard rather than finalizing an incomplete sequence. Stop freezes the exact ordered sequence; discard clears it.
 - M2.14a is done: ending a quick session produces an immutable Foundation-only snapshot of non-discarded completed sets using corrected values and honest clean-evidence provenance. Per-set units remain separate, and count totals fail closed if evidence is missing.
 - `TrainerApp` now replaces a nonempty ended workout with a minimal transient summary and shuts down camera/runtime work first. It shows set rows, counted totals, clean provenance, and low-confidence captures; it does not claim recurring issues, persist history, or calculate mixed-unit volume. Empty sessions dismiss directly.
-- M2.V1 is done on the local verification branch: one command now runs the complete offline package/build baseline, the analyzer-summary mapping no longer lives privately in SwiftUI, and a deterministic synthetic package-contract scenario composes PoseCore, TrainerRuntime, SquatAnalysis, and TrainerCore. It does not cover production-default configuration, controller wiring, `AsyncStream`, or queued Stop behavior, and it closes no physical or pose-accuracy gate.
+- M2.V1 is done and consolidated on the checkpoint branch: one command now runs the complete offline package/build baseline, the analyzer-summary mapping no longer lives privately in SwiftUI, and a deterministic synthetic package-contract scenario composes PoseCore, TrainerRuntime, SquatAnalysis, and TrainerCore. It does not cover production-default configuration, controller wiring, `AsyncStream`, or queued Stop behavior, and it closes no physical or pose-accuracy gate.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -678,23 +682,23 @@ Use the Ryan-style repo-as-memory loop:
 5. Read `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
 6. Read `docs/design_reviews/2026-07-25_native_ui_ux_audit.md` before reviewing or physically verifying the presentation pass.
 7. Read `docs/design_reviews/2026-08-03_m2_physical_acceptance.md` before changing setup/countdown/recovery behavior.
-8. Implement only the selected M2.5b slice next: latch an evaluated failing setup after arming and expose a persistent solo-reachable retry/Start Anyway decision while preserving deliberate arming and failed-check provenance.
+8. M2.5b is complete in both automated and focused physical verification. M2.6 instrumentation rules out countdown drift, domain transition cost, and camera restart; a stable-preview-identity candidate is implemented and fully verified offline. Recheck it only during a natural future set.
 9. Verify native changes from the repo root with:
    - `scripts/verify_native_ios.sh` for all four package suites plus both single-architecture workspace Simulator builds.
    - `scripts/verify_native_ios.sh --packages-only` for the package-only quick mode.
 10. Update task status, this handoff, `ios/README.md`, and `docs/decision_log.md`.
 11. Ask before committing. Exclude `.agents/` and `skills-lock.json` unless the user explicitly requests them.
-12. After M2.5b, investigate the measured approximately 9-second countdown-to-visible-recording transition. Defer M2.14's physical summary check until the next natural multi-set workout. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
+12. Defer M2.14's physical summary check until the next natural multi-set workout. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
 
 Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
 2. M1.11 is complete: separate standing and squat artifacts pass the portrait physical-device viability protocol.
-3. M2.1 through M2.4, M2.5a, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and M2.14a are complete. M2.5 stays open for solo-reachable weak-setup recovery; M2.6 stays open for duration choices, failure behavior, and the measured transition delay. M2.10 stays open for real clean gates and low-confidence physical review. Parent M2.14 stays open for deferred physical multi-set summary inspection.
+3. M2.1 through M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and M2.14a are complete. M2.6 stays open for duration choices, failure behavior, and physical confirmation of the installed transition candidate. M2.10 stays open for real clean gates; its normal and low-confidence review presentation now pass physically. Parent M2.14 stays open for deferred physical multi-set summary inspection.
 4. Use `SquatTrainer.xcworkspace` for both `PoseBakeoff` and `TrainerApp` (MediaPipe via CocoaPods on both).
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
 6. The production analyzer already separates counted reps from clean gates. Preserve that boundary; the Python state machine is reference logic, not a literal Swift specification.
-7. M2.9 Stop/processing/automatic review and M2.12 active/review discard paths passed on device and are done. M2.10's normal review passed, but it remains open because clean gates are unavailable and low-confidence review could not be reached through the current solo override flow.
+7. M2.9 Stop/processing/automatic review and M2.12 active/review discard paths passed on device and are done. M2.10's normal and low-confidence reviews passed, but it remains open because clean gates are unavailable.
 8. M2.11 is done in both automated and physical checks: correction validation, user-evidence provenance, load carry-forward, and corrected rollback passed. Detailed per-rep editing and persistence remain out of scope.
 9. M2.5a, M2.7a, and M2.14a from the ranked offline review are done. Parent M2.14 still needs the deliberately deferred physical multi-set summary inspection; persistence remains deferred.
 10. M2.V1 deterministic verification is done on `agent/overnight-native-verification`: `TrainerRuntime` has 19 passing tests, including comprehensive analyzer-summary mapping characterization and one synthetic package-contract scenario, and the unified harness passes both host-architecture app builds. It proves deterministic package contracts and compilation, not production-default/controller wiring, physical behavior, or accuracy.
@@ -704,10 +708,10 @@ Current boundary:
 ## Open UX / Product Discussion (do not invent alone)
 
 - Preserve the deliberate pre-position `Arm set` interaction; the user confirmed it matches solo gym use.
-- M2.5b: post-arm weak-setup recovery must latch evaluated failures and stay reachable when the solo user returns to the phone. Keep camera primary and status compact.
-- M2.6: diagnose the approximately 9-second gap between countdown completion and visible recording state.
+- M2.5b now latches evaluated failures after a 10-second positioning grace and keeps Retry/Start Anyway/Cancel reachable from a compact post-arm card. Focused physical verification passed.
+- M2.6: the delay is isolated past the domain transition, and a stable-preview-identity candidate is installed. Confirm its recording haptic/UI/frame timing during a natural future set; do not schedule another cumbersome standalone acceptance run.
 - Decimal-pad Done button is in; keep keyboard dismiss workable.
-- Low-confidence review labeling remains physically unverified until M2.5b makes the setup override reachable.
+- Low-confidence review labeling is physically verified through the M2.5b Start Anyway path.
 - Physical M2.14 check: end a multi-set workout, verify corrected/non-discarded rows and low-confidence labeling, confirm clean evidence wording, and use `Done` to return home.
 - Physical UI-pass follow-ups: the discard-recovery notice needs stronger visual priority; the large setup status card is redundant after returning to the setup form; zero-rep notice visibility was inconsistent. Camera interruption and larger-text/summary layouts remain unverified.
 

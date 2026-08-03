@@ -49,11 +49,11 @@ or End Workout -> Workout Summary -> Done
 
 ## Current Execution Boundary
 
-- M2.1-M2.4, M2.5a, M2.7a, M2.8, M2.11, M2.14a, and M2.V1 are done.
-- M2.5-M2.7, M2.9, M2.10, M2.12, and parent M2.14 retain the physical, UX, or clean-evidence gates documented in their result sections.
+- M2.1-M2.4, M2.5a, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, M2.14a, and M2.V1 are done.
+- M2.5, M2.6, M2.10, and parent M2.14 retain the UX, timing, clean-evidence, or deferred physical gates documented in their result sections.
 - M2.13 persistence has not started; the M2.14a summary is transient and in memory only.
-- Do not infer the next ticket from numbering alone. For offline code-only options after M2.11, use `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` and take one user-approved slice.
-- M2.5a optional side-view evidence, M2.7a lossless active-set pose ingestion, M2.14a in-memory session summary, and the M2.V1 native verification harness are done. The highest-value next session is the documented physical-device pass; M2.11a atomic edits remain a bounded offline option only after a new user choice.
+- The 2026-08-03 physical pass is recorded in `docs/design_reviews/2026-08-03_m2_physical_acceptance.md`. Multi-set summary inspection is deliberately deferred until the next natural multi-set workout.
+- M2.5b reachable armed weak-setup recovery is the selected next implementation slice. The approximately 9-second countdown-to-visible-recording delay is the next M2.6 investigation after it.
 
 ## Tasks
 
@@ -373,6 +373,8 @@ Live-signal progress (2026-07-10, post-checkpoint):
 - Physical verification (2026-07-11): propped-phone arm flow works. User armed, walked into frame, all four checks went green, countdown ran, live recording observed ~920 frames with pose overlay. Override path not yet exercised on device.
 - Open UX discussion: `Arm set` wording and post-arm waiting UI (camera must stay primary).
 - M2.5 remains `in_progress` until that UX discussion is settled and override/Stop paths get a quick device pass.
+- Physical acceptance (2026-08-03): the user reaffirmed that deliberate pre-position `Arm set` behavior matches solo gym use, and the normal arm/countdown/capture/Stop path passed. The weak-setup override did not: `Setup looks weak — other options` exists only before arming while all checks are evaluated and at least one is failing. Walking back from the evaluated position changes the live evidence, while the armed waiting UI offers only `Cancel`, making the override effectively unreachable for a solo lifter.
+- M2.5 remains `in_progress`; M2.5b is selected to fix that reachability gap without weakening the deliberate-start rule.
 
 ### M2.5a Preserve Unknown Side-View Evidence
 
@@ -390,6 +392,37 @@ Result (2026-07-12):
 - Tests cover unknown evidence remaining pending, unknown startup samples not diluting later passing evidence, and explicit `false` samples still producing a failing ratio.
 - All four Swift package suites pass. `TrainerApp` builds through `SquatTrainer.xcworkspace` for the arm64 iOS Simulator architecture; the normal dual-architecture build reached final linking but the disk filled before its universal binary could be written.
 - M2.5's physical-device and Arm-set UX gates remain open; this code-only fix does not close them.
+
+### M2.5b Make Weak-Setup Recovery Reachable After Arming
+
+Status: pending
+
+Selection: next implementation slice after the 2026-08-03 physical acceptance pass
+
+Goal:
+
+Let a solo lifter make an explicit retry/start-anyway decision after an armed setup has been evaluated as weak, without requiring another person or making the decision disappear when the lifter returns to the phone.
+
+Constraints:
+
+- Preserve `Arm set` as the deliberate interaction before the user props the phone and enters frame.
+- Do not silently override failing checks or auto-start a low-confidence capture.
+- Keep the camera primary and post-arm status compact.
+- Preserve the evaluated failed-check IDs in the low-confidence setup outcome.
+
+Acceptance criteria:
+
+- After arming, a fully evaluated failing setup enters a latched recovery state.
+- The retry/start-anyway decision remains visible when the user returns to the phone even if live checks subsequently change.
+- Retry clears the latched decision and waits for a fresh evaluated setup.
+- Start Anyway begins the existing countdown and the completed set is labeled low-confidence with the latched failed checks.
+- The complete interaction is usable by one person with a propped phone.
+
+Verification:
+
+- Public-behavior state tests for latch, retry, explicit override, and cancellation.
+- `TrainerApp` workspace build.
+- One focused solo physical-device pass through retry and Start Anyway into low-confidence review.
 
 ### M2.6 Add Start Set Countdown
 
@@ -442,10 +475,11 @@ Countdown / arming progress (2026-07-10 → 2026-07-11):
 - Duration options 3/5/10 remain unimplemented; default remains 5 seconds.
 - Physical arm→countdown→record succeeded once. Visibility-failure confirmation at countdown end not yet device-tested.
 - Open discussion: final arming copy and post-arm chrome.
+- Physical acceptance (2026-08-03): the normal armed setup triggered the countdown and recording automatically without a second tap, but the gap from countdown completion to visible recording state was approximately 9 seconds. M2.6 remains `in_progress`; after M2.5b, measure whether the delay is camera/runtime startup, main-thread work, or state feedback and make the recording boundary unambiguous.
 
 ### M2.7 Add Active Set Capture State
 
-Status: in_progress
+Status: done
 
 Goal:
 
@@ -492,9 +526,9 @@ Implementation history (2026-07-10 → 2026-07-11):
 - Live pose frames increment `framesObserved` during recording. This originally left provisional reps at 0 behind an analyzer seam; M2.8 now supplies the real streaming count.
 - The first seam used a thin stopped handoff. M2.9/M2.10 replaced it with full-sequence processing, in-memory auto-save, and automatic review.
 - `Discard` is immediate when provisional reps are 0; confirmation is required when provisional reps are > 0. No pause control exists.
-- Physical device: countdown auto-started recording and observed ~920 frames with "Recording set" UI. Stop/Discard on-device confirmation still outstanding.
+- Physical device: countdown auto-started recording and observed ~920 frames with "Recording set" UI.
 - `TrainerCore` has 29 passing tests (includes arming + active-set suites).
-- Still open before closing M2.7: device Stop/Discard confirmation and the Arm-set/post-arm UX discussion. M2.8 analyzer-backed provisional counting is physically verified. M2.9/M2.10 review code is now implemented, but its physical pass remains open.
+- Physical acceptance (2026-08-03) confirmed Stop, immediate zero-rep active discard, detected-rep confirmation/cancel/confirm, and return to the same set/load. No pause path exists. Together with the prior analyzer-backed provisional-count pass, this satisfies M2.7; the weak-setup reachability and countdown latency findings remain scoped to M2.5/M2.6.
 
 ### M2.7a Lossless Active-Set Pose Ingestion
 
@@ -573,7 +607,7 @@ Implementation progress (2026-07-11):
 
 ### M2.9 Implement Stop -> Processing -> Review
 
-Status: in_progress
+Status: done
 
 Goal:
 
@@ -631,7 +665,7 @@ Implementation progress (2026-07-11):
 - Processing can be discarded while in flight if it hangs. An unexpected finalization/session failure enters an honest failed state with retained-frame retry and discard; no result is claimed as saved on that path.
 - `TrainerCore` tests cover canonical/provisional preservation, failure retry, failure discard, and in-flight processing discard. All required package tests and the `TrainerApp` workspace Simulator build pass.
 - A fresh signed `TrainerApp` 0.1 (build 1) was built from `SquatTrainer.xcworkspace` and installed successfully on the connected iPhone 16 Pro Max at 2026-07-11 01:04 local time. `devicectl` confirmed the installed developer app. Automated launch was denied only because the phone was locked; installation is verified, behavior is not.
-- Remaining before `done`: physical-device Stop → processing → automatic review confirmation, including camera removal and a retry/discard sanity check if practical.
+- Physical acceptance (2026-08-03): Stop removed the camera immediately, processing completed, review opened automatically, and the set was already present in the current session with no explicit save action. Processing failure was not artificially induced; existing deterministic retry/discard coverage remains the evidence for that exceptional path. M2.9 is done.
 
 ### M2.10 Build Post-Set Review Screen
 
@@ -694,6 +728,7 @@ Implementation progress (2026-07-11):
 - The form takeaway is explicitly unavailable until required clean gates are assessed; no fake issue categories or clean claims are shown.
 - `Next Set` is the primary action. `Discard` and `End Workout` are secondary. There is no explicit save action.
 - Remaining before `done`: required clean depth/lockout/tempo conclusions are still unimplemented and physically unchallenged, so M2.10 intentionally remains `in_progress` under its guardrail. Normal and overridden-setup review also need physical-device inspection.
+- Physical acceptance (2026-08-03): normal review was legible at standard text size and clearly showed `load × counted reps`, unavailable clean evidence, neutral rep markers, unavailable takeaway, and `Next Set`. Low-confidence review remains physically unverified because the current weak-setup override is not reachable in the intended solo flow. Required clean gates also remain open, so M2.10 stays `in_progress`.
 
 ### M2.11 Add Essential Post-Set Editing
 
@@ -757,11 +792,11 @@ Result (2026-07-11):
 - Correcting review load also updates the next draft's carried-forward load. Review discard removes a corrected auto-saved set and restores the set ordinal with the corrected load and a reset setup gate.
 - Added a compact inline `Edit results` affordance to the existing review for load/unit, counted reps, and clean reps. `Apply edits` mutates the already auto-saved in-memory set and refreshes review; it does not reintroduce `Save Set` or detailed per-rep editing.
 - Added 10 public-behavior correction tests through `QuickSession`. Final verification passes: `PoseCore`, `SquatAnalysis` (10 tests), `TrainerCore` (45 tests), and the `TrainerApp` workspace Simulator build.
-- Follow-up manual UI verification remains: exercise load/count/clean edits (including unavailable → manual clean), validation copy, keyboard dismissal, corrected next-set load, and discard after correction on a physical device. M2.9, M2.10, and M2.12 retain their separate physical gates.
+- Physical acceptance (2026-08-03) passed the correction follow-up: load/count/clean edits applied, manual clean evidence displayed `User corrected — not analyzer evidence`, `clean > counted` was rejected, corrected load carried forward, and corrected review discard restored the corrected load and set ordinal. M2.11 remains done.
 
 ### M2.12 Implement Discard Behavior
 
-Status: in_progress
+Status: done
 
 Goal:
 
@@ -804,7 +839,7 @@ Implementation progress (2026-07-11):
 - Review discard uses the canonical finalized count when available, so a rep found only by batch finalization still requires confirmation.
 - Because successful finalization auto-saves in memory before review, review discard now removes that exact most-recent completed set and restores the set ordinal/load draft with setup reset. The discarded set no longer contributes to the session's completed-set count.
 - `TrainerCore` tests cover active, processing, failed-processing, canonical-review confirmation, and reviewed-set rollback behavior.
-- Remaining before `done`: physical-device checks for zero-rep immediate discard, detected-rep confirmation, and review rollback.
+- Physical acceptance (2026-08-03) passed all three required paths: zero-rep active discard was immediate; detected provisional reps required confirmation and supported cancel/confirm; corrected review discard removed the completed result, restored its set ordinal and corrected load, and reduced the completed-set count. One zero-rep attempt did not show the expected recovery notice, while a later confirmed discard did; that visual-feedback inconsistency is a follow-up and does not change the verified discard/rollback outcome. M2.12 is done.
 
 ### M2.13 Add Local Persistence
 
@@ -919,6 +954,7 @@ Result (2026-07-12):
 - Six public-behavior summary tests bring `TrainerCore` to 53 passing tests. All four package suites and arm64 Simulator workspace builds for both app schemes pass.
 - A signed `TrainerApp` build from checkpoint `ffb32d5` installed and launched successfully on the connected iPhone 16 Pro Max at 2026-07-12 19:56 local time. This verifies device delivery only, not the multi-set summary acceptance behavior.
 - M2.14 remains `in_progress` pending physical multi-set summary inspection. Recurring form issues remain deliberately unavailable because issue inference/clean scoring was not added.
+- The 2026-08-03 pass accumulated multiple sets but the summary state was no longer reachable when requested, and recreating several sets solely for acceptance had become cumbersome. The user deferred summary inspection until the next natural multi-set workout. M2.14 remains `in_progress`; this is deferred, not failed.
 
 ### M2.V1 Add Deterministic Native Verification Harness
 

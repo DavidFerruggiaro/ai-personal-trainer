@@ -196,3 +196,16 @@ This log records product and technical decisions that future agents should not r
 - Finalized `agent/overnight-native-verification` locally as two scoped commits: analysis handoff/tests first, then the verification harness and repo-memory updates. `.agents/` and `skills-lock.json` remained untracked and excluded.
 - Finalized `agent/native-ui-ux-pass` locally as two scoped commits: presentation changes first, then its audit/task/repo-memory updates. The pass remained independent of the verification branch and closed no physical acceptance gate.
 - No push, deployment, or draft PR #1 modification was performed by either isolated branch.
+
+## 2026-08-03
+
+- Consolidated the verification and UI branches onto `codex/native-rebuild-checkpoint`, preserving both source branches. Resolved the presentation/runtime handoff through the tested `TrainerSetAnalysisMapper`, reran the full native harness, and pushed the checkpoint to updated draft PR #1.
+- Built and signed the consolidated `TrainerApp` for the connected iPhone 16 Pro Max, installed it, and opened it after the Apple Development profile was trusted.
+- Physical acceptance passed the normal solo flow through arm, countdown, capture, Stop, automatic processing, and review. Stop removed the camera immediately; the finalized review showed 3 counted reps and honest unavailable clean/form evidence.
+- Physical corrections passed: load/count/clean edits, explicit user-evidence provenance, `clean <= counted` validation, corrected load carry-forward, and corrected review rollback.
+- Physical discard passed: zero-rep active discard was immediate, detected provisional reps required confirmation with working cancel/confirm behavior, and review discard removed the corrected completed set while restoring its set ordinal/load.
+- Closed M2.7, M2.9, and M2.12 from combined deterministic and physical evidence. M2.11 remains done with its physical follow-up now complete.
+- Kept M2.5 open because the weak-setup override is not usable in the intended solo flow: it appears only before arming while failed evidence is live, and returning to the phone changes that evidence. Preserve `Arm set`; select M2.5b to latch post-arm failed setup and expose a persistent explicit retry/Start Anyway decision.
+- Kept M2.6 open and recorded an approximately 9-second gap from countdown completion to visible recording state. Investigate the state/runtime boundary after M2.5b rather than assuming whether capture or only feedback is late.
+- Kept M2.10 open because required clean gates remain unimplemented and low-confidence review could not be physically reached. Kept M2.14 open; the user deferred summary inspection until a natural multi-set workout because recreating the state solely for acceptance was cumbersome.
+- Preserved UI follow-ups without expanding the selected slice: recovery notices need stronger visual priority, the large setup-status card is redundant after returning to the setup form, and one zero-rep discard did not visibly show its recovery notice while a later confirmed discard did.

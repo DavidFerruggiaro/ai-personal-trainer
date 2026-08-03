@@ -1,6 +1,6 @@
 # Native Rebuild Agent Handoff
 
-Last updated: 2026-07-26
+Last updated: 2026-08-03
 
 ## Purpose
 
@@ -48,18 +48,14 @@ Native rebuild additions:
 - `scripts/verify_native_ios.sh`: deterministic native verification command for all package suites and both single-architecture workspace Simulator builds, with isolated temporary caches/DerivedData and a package-only quick mode.
 - `ios/SquatTrainer.xcodeproj` + `ios/SquatTrainer.xcworkspace`: always open the **workspace** (CocoaPods MediaPipe for both apps).
 
-Git / working tree note (2026-07-25):
+Git / working tree note (2026-08-03):
 
-- Branch: `agent/overnight-native-verification`, created from `aa57e11` without modifying the existing draft PR or its base branch.
-- The native verification harness, analyzer-summary adapter, deterministic package-contract tests, and documentation were finalized locally as two scoped commits on 2026-07-26. They were not pushed, and draft PR #1 was not modified. Review the split in `docs/design_reviews/2026-07-24_native_verification_harness.md`.
-- The base `codex/native-rebuild-checkpoint` branch remains backed up in draft PR #1. No commit, push, merge, or PR mutation was performed during the verification-harness continuation.
-- Unrelated `.agents/` and `skills-lock.json` are intentionally excluded from product commits.
-
-Isolated UI pass note (2026-07-25):
-
-- `agent/native-ui-ux-pass` was created in an isolated worktree from trusted checkpoint `aa57e1196886e4ec6a633f86a9c4d53b2750fb79`.
-- The pass changes presentation and documentation only. It does not depend on or modify `agent/overnight-native-verification`, draft PR #1, pose/runtime/domain packages, or persistence.
-- The pass is finalized as two local commits on its isolated branch. See `docs/design_reviews/2026-07-25_native_ui_ux_audit.md` and `docs/tasks/native_ui_ux_pass.md` for scope and verification.
+- Branch: `codex/native-rebuild-checkpoint`, pushed through `5276914` and tracked by draft PR #1.
+- The verification branch was fast-forwarded into the checkpoint, and the isolated UI pass was merged with conflict resolution in the repo-memory files and `TrainerRootView`. The public tested analyzer mapper remains the single production mapping path.
+- Draft PR #1 is open, draft, mergeable, and clean at `https://github.com/DavidFerruggiaro/ai-personal-trainer/pull/1`.
+- Source branches `agent/overnight-native-verification` and `agent/native-ui-ux-pass` remain preserved.
+- The competitive workout-trainer teardown is a separate commit after the merge.
+- Unrelated `.agents/` and `skills-lock.json` remain intentionally untracked and excluded from product commits.
 
 ## Environment State
 
@@ -76,7 +72,9 @@ Xcode 16.4
 Build version 16F6
 ```
 
-Corrected verification passes with Swift 6.1.2 and Xcode 16.4: `PoseCore` (1 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10 tests), `TrainerCore` (53 tests), `TrainerRuntime` (19 tests), and host-architecture iOS Simulator builds of both `TrainerApp` and `PoseBakeoff` through `SquatTrainer.xcworkspace`. The harness canonicalizes one writable non-root scratch base and removes only its generated child before reporting success; it does not enforce a storage quota, so `NATIVE_VERIFY_SCRATCH_ROOT` should select a filesystem with sufficient free space. SwiftPM sandboxing stays enabled unless a caller explicitly opts out while already inside a trusted outer sandbox. The normal dual-architecture `TrainerApp` Simulator build previously compiled and linked both architectures but the internal disk filled while writing the final universal binary; this is an environment-capacity failure, not a source compile failure. At 2026-07-12 19:56 local time, a fresh signed `TrainerApp` 0.1 (build 1) from checkpoint `ffb32d5` built successfully through the workspace, installed on the connected iPhone 16 Pro Max, and launched successfully through `devicectl` as bundle `com.aiPersonalTrainer.TrainerApp`. This verifies build, signing, installation, and launch only; Stop/review/edit/discard/summary behavior still requires the documented hands-on pass.
+Corrected verification passes with Swift 6.1.2 and Xcode 16.4: `PoseCore` (1 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10), `TrainerCore` (53), `TrainerRuntime` (19), and host-architecture iOS Simulator builds of both `TrainerApp` and `PoseBakeoff` through `SquatTrainer.xcworkspace`. The harness canonicalizes one writable non-root scratch base and removes only its generated child before reporting success; it does not enforce a storage quota, so `NATIVE_VERIFY_SCRATCH_ROOT` should select a filesystem with sufficient free space. SwiftPM sandboxing stays enabled unless a caller explicitly opts out while already inside a trusted outer sandbox.
+
+On 2026-08-03, the consolidated checkpoint also built and signed successfully for the connected iPhone 16 Pro Max, installed as `com.aiPersonalTrainer.TrainerApp`, and opened after the development profile was trusted. Physical acceptance then passed normal arm/countdown/capture/Stop/review, review corrections and validation, next-load carry-forward, zero/detected active discard, and corrected review rollback. M2.7, M2.9, and M2.12 are now done. The pass found an approximately 9-second countdown-to-visible-recording delay and proved that the pre-arm weak-setup override is not reachable in the intended solo flow. Multi-set summary inspection was deferred until a natural multi-set workout. See `docs/design_reviews/2026-08-03_m2_physical_acceptance.md`.
 
 The isolated 2026-07-25 UI pass also compiles cleanly for an arm64 Simulator, including its deterministic SwiftUI component previews, and all four package suites still pass. Transient Simulator launch screenshots covered only the root screen and large-text layout; they were inspected during the pass, were not retained as repository artifacts, and do not close any physical workout-flow gate.
 
@@ -679,40 +677,39 @@ Use the Ryan-style repo-as-memory loop:
 4. Read `docs/tasks/M2_back_squat_vertical_slice_tasks.md`.
 5. Read `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`.
 6. Read `docs/design_reviews/2026-07-25_native_ui_ux_audit.md` before reviewing or physically verifying the presentation pass.
-7. If a physical device is available, inspect M2.11 edits, complete the already-open M2.9/M2.10/M2.12 gates, inspect the parent M2.14 multi-set summary, and exercise the UI-pass states; do not mark those tickets done without their checks.
-8. M2.5a, M2.7a, M2.14a, the native verification harness, analysis-summary mapping, and the isolated UI presentation pass are complete. The higher-value next session is the documented physical-device pass. M2.11a atomic edits remain a bounded offline option, but take it only after a new user choice.
+7. Read `docs/design_reviews/2026-08-03_m2_physical_acceptance.md` before changing setup/countdown/recovery behavior.
+8. Implement only the selected M2.5b slice next: latch an evaluated failing setup after arming and expose a persistent solo-reachable retry/Start Anyway decision while preserving deliberate arming and failed-check provenance.
 9. Verify native changes from the repo root with:
    - `scripts/verify_native_ios.sh` for all four package suites plus both single-architecture workspace Simulator builds.
    - `scripts/verify_native_ios.sh --packages-only` for the package-only quick mode.
 10. Update task status, this handoff, `ios/README.md`, and `docs/decision_log.md`.
 11. Ask before committing. Exclude `.agents/` and `skills-lock.json` unless the user explicitly requests them.
-12. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
+12. After M2.5b, investigate the measured approximately 9-second countdown-to-visible-recording transition. Defer M2.14's physical summary check until the next natural multi-set workout. Do not start M2.13 persistence, history, video retention, coaching, clean-gate invention, or exercise expansion without a new scoped request.
 
 Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
 2. M1.11 is complete: separate standing and squat artifacts pass the portrait physical-device viability protocol.
-3. M2.1 through M2.4, M2.5a, M2.7a, M2.8, M2.11, and M2.14a are complete. M2.5–M2.7 code is in and a first physical capture loop succeeded; the parent tickets stay `in_progress` until Stop/Discard device confirmation and the open Arm-set UX discussion are resolved. Parent M2.14 also remains `in_progress` until its multi-set summary is inspected on a physical device.
+3. M2.1 through M2.4, M2.5a, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and M2.14a are complete. M2.5 stays open for solo-reachable weak-setup recovery; M2.6 stays open for duration choices, failure behavior, and the measured transition delay. M2.10 stays open for real clean gates and low-confidence physical review. Parent M2.14 stays open for deferred physical multi-set summary inspection.
 4. Use `SquatTrainer.xcworkspace` for both `PoseBakeoff` and `TrainerApp` (MediaPipe via CocoaPods on both).
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
 6. The production analyzer already separates counted reps from clean gates. Preserve that boundary; the Python state machine is reference logic, not a literal Swift specification.
-7. M2.9 full-sequence processing and the first honest M2.10 review are implemented and build-verified. M2.9 needs an on-device Stop/review pass; M2.10 remains open because clean gates are unavailable, not zero. M2.12 review rollback is also implemented and needs device confirmation.
-8. M2.11 is implemented and automated verification passes. Its remaining follow-up is physical UI inspection only; detailed per-rep editing and persistence remain out of scope.
-9. M2.5a, M2.7a, and M2.14a from the ranked offline review are done. Parent M2.14 still needs physical multi-set summary inspection; persistence remains deferred.
+7. M2.9 Stop/processing/automatic review and M2.12 active/review discard paths passed on device and are done. M2.10's normal review passed, but it remains open because clean gates are unavailable and low-confidence review could not be reached through the current solo override flow.
+8. M2.11 is done in both automated and physical checks: correction validation, user-evidence provenance, load carry-forward, and corrected rollback passed. Detailed per-rep editing and persistence remain out of scope.
+9. M2.5a, M2.7a, and M2.14a from the ranked offline review are done. Parent M2.14 still needs the deliberately deferred physical multi-set summary inspection; persistence remains deferred.
 10. M2.V1 deterministic verification is done on `agent/overnight-native-verification`: `TrainerRuntime` has 19 passing tests, including comprehensive analyzer-summary mapping characterization and one synthetic package-contract scenario, and the unified harness passes both host-architecture app builds. It proves deterministic package contracts and compilation, not production-default/controller wiring, physical behavior, or accuracy.
-11. The isolated UI pass clarifies state/exit safety, zero/discard/rollback recovery, and adaptive review/summary accessibility without changing domain behavior. It is committed locally on its isolated branch and remains physically unverified.
+11. The merged UI pass clarifies state/exit safety, zero/discard/rollback recovery, and adaptive review/summary accessibility without changing domain behavior. Standard-size physical review and discard/rollback recovery were exercised; larger-text, interruption, and summary layouts remain unverified.
 12. The product checkpoint excludes `.agents/` and `skills-lock.json`.
 
 ## Open UX / Product Discussion (do not invent alone)
 
-- Final copy for the deliberate start control (currently `Arm set`).
-- Post-arm waiting chrome: keep camera primary; status compact.
-- Whether weak-setup override needs more device testing / clearer discovery.
+- Preserve the deliberate pre-position `Arm set` interaction; the user confirmed it matches solo gym use.
+- M2.5b: post-arm weak-setup recovery must latch evaluated failures and stay reachable when the solo user returns to the phone. Keep camera primary and status compact.
+- M2.6: diagnose the approximately 9-second gap between countdown completion and visible recording state.
 - Decimal-pad Done button is in; keep keyboard dismiss workable.
-- Physical review check: confirm Stop removes camera immediately, processing transitions automatically, canonical count/load are legible, unavailable clean copy is clear, and low-confidence labeling appears after setup override.
-- Physical M2.11 edit check: edit load/count/clean, challenge invalid values, confirm user-corrected clean provenance, confirm corrected load carries to the next set, and discard a corrected review.
+- Low-confidence review labeling remains physically unverified until M2.5b makes the setup override reachable.
 - Physical M2.14 check: end a multi-set workout, verify corrected/non-discarded rows and low-confidence labeling, confirm clean evidence wording, and use `Done` to return home.
-- Physical UI-pass check: inspect the recording/processing/review hierarchy at lifting distance, zero-result recovery, each phase-specific discard alert, corrected-set rollback notice, camera interruption during arming/countdown/recording, and review/summary layouts with the keyboard and larger text.
+- Physical UI-pass follow-ups: the discard-recovery notice needs stronger visual priority; the large setup status card is redundant after returning to the setup form; zero-rep notice visibility was inconsistent. Camera interruption and larger-text/summary layouts remain unverified.
 
 ## Milestone 1 Ticket Breakdown
 

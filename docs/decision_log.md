@@ -185,7 +185,14 @@ This log records product and technical decisions that future agents should not r
 - The narrow correction pass added assessed/partial/zero mapper cases; made SwiftPM sandbox disabling explicit; canonicalized the scratch base with Apple Bash 3.2-compatible `pwd -P`; made cleanup refusal/failure nonzero and cleanup precede PASS; corrected CLI and README behavior; and described the synthetic path as a deterministic package-contract scenario with production-default/controller/queue exclusions.
 - No default-configuration or controller smoke test was added: those are separate integration boundaries. Existing package ingestion and domain Stop-isolation tests remain in place, while controller `AsyncStream` and queued Stop handling stay explicitly unproven. The mapper seam stays coupled to the harness slice because it is the minimal production boundary needed for deterministic analyzer-to-domain verification.
 
+- Audited the complete native Quick Session journey from launch through multi-set summary at trusted checkpoint `aa57e11`, using an isolated `agent/native-ui-ux-pass` worktree that does not depend on or modify `agent/overnight-native-verification` or draft PR #1.
+- Bounded implementation to three presentation-only outcome initiatives: state hierarchy and exit safety; zero/discard/rollback recovery; and adaptive review/summary accessibility.
+- Preserved all analyzer, rep-counting, coaching, camera/runtime, mapping, workout-domain, correction, summary-projection, and persistence behavior. The existing automatic save-before-review, immediate known-zero discard, conservative unfinished/detected-rep confirmation, and corrected-set rollback remain intact.
+- Added deterministic SwiftUI component previews and verified the pass with all four package suites plus a clean arm64 `TrainerApp` Simulator build. The inspected Simulator launch screenshots were transient, were not retained as repository artifacts, and do not establish that the physical workout flow works.
+- Kept `Arm set` wording, weak-setup override design, countdown choices, and all existing Stop/review/edit/discard/summary physical acceptance gates open.
+
 ## 2026-07-26
 
 - Finalized `agent/overnight-native-verification` locally as two scoped commits: analysis handoff/tests first, then the verification harness and repo-memory updates. `.agents/` and `skills-lock.json` remained untracked and excluded.
-- No push, merge, rebase, amend, deployment, branch switch, or draft PR #1 modification was performed.
+- Finalized `agent/native-ui-ux-pass` locally as two scoped commits: presentation changes first, then its audit/task/repo-memory updates. The pass remained independent of the verification branch and closed no physical acceptance gate.
+- No push, deployment, or draft PR #1 modification was performed by either isolated branch.

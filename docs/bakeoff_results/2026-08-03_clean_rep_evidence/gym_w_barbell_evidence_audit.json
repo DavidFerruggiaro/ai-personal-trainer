@@ -1,0 +1,667 @@
+{
+  "classification_performed": false,
+  "configuration": {
+    "maximum_phase_offset_s": 0.5,
+    "minimum_frame_confidence": 0.3,
+    "minimum_landmark_confidence": 0.5,
+    "target_timing_resolution_s": 0.15
+  },
+  "engine": {
+    "config": {
+      "max_frame_dimension": "720",
+      "max_sample_fps": "2",
+      "min_pose_detection_confidence": "0.30",
+      "min_pose_presence_confidence": "0.30",
+      "min_tracking_confidence": "0.30",
+      "model": "pose_landmarker_full.task",
+      "num_poses": "1",
+      "running_mode": "video",
+      "source": "prerecorded_video"
+    },
+    "name": "mediapipe_pose_landmarker",
+    "version": "MediaPipeTasksVision"
+  },
+  "frame_summary": {
+    "eligible_frame_count": 155,
+    "exported_frame_count": 157,
+    "finite_timestamp_count": 157,
+    "source_cadence": {
+      "maximum_interval_s": 0.5,
+      "median_interval_s": 0.5,
+      "p95_interval_s": 0.5,
+      "sample_count": 157
+    },
+    "target_timing_resolution_supported": false
+  },
+  "interpretation_guardrails": [
+    "No depth, lockout, tempo/control, or clean pass/fail classification is produced.",
+    "Hip height above knee is a tracked-joint proxy, not a validated hip-crease depth rule.",
+    "A gate threshold requires labeled pass and failure examples plus held-out validation.",
+    "Sampling cadence limits event timing precision regardless of timestamp arithmetic."
+  ],
+  "label_class_coverage": {
+    "clean_negative_reps": 0,
+    "clean_positive_reps": 7,
+    "human_verified": true,
+    "labeled_reps": 7,
+    "required_gate_class_coverage": {
+      "depth": {
+        "both_classes_present": false,
+        "failure_labels": 0,
+        "pass_labels": 7,
+        "unresolved_labels": 0
+      },
+      "lockout": {
+        "both_classes_present": false,
+        "failure_labels": 0,
+        "pass_labels": 7,
+        "unresolved_labels": 0
+      },
+      "tempo_control": {
+        "both_classes_present": false,
+        "failure_labels": 0,
+        "pass_labels": 7,
+        "unresolved_labels": 0
+      }
+    }
+  },
+  "labeled_rep_evidence": [
+    {
+      "index": 1,
+      "label": {
+        "bottom_s": 38.0,
+        "clean": true,
+        "counted": true,
+        "end_s": 39.0,
+        "failures": [],
+        "start_s": 35.0
+      },
+      "preferred_observed_side": "right",
+      "side_reports": [
+        {
+          "available_phase_samples": 0,
+          "coverage_fraction": 0.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": false,
+            "lockout_start_and_end_samples_available": false,
+            "tempo_phase_samples_available": false
+          },
+          "interval_frame_count": 9,
+          "maximum_evidence_gap_s": null,
+          "minimum_measurement_confidence": null,
+          "observed_tempo_s": {
+            "ascent": null,
+            "descent": null,
+            "total": null
+          },
+          "phase_samples": {
+            "bottom": null,
+            "end": null,
+            "start": null
+          },
+          "side": "left",
+          "usable_measurement_count": 0
+        },
+        {
+          "available_phase_samples": 3,
+          "coverage_fraction": 1.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": true,
+            "lockout_start_and_end_samples_available": true,
+            "tempo_phase_samples_available": true
+          },
+          "interval_frame_count": 9,
+          "maximum_evidence_gap_s": 0.5,
+          "minimum_measurement_confidence": 0.9103,
+          "observed_tempo_s": {
+            "ascent": 1.0,
+            "descent": 3.0,
+            "total": 4.0
+          },
+          "phase_samples": {
+            "bottom": {
+              "confidence": 0.9103,
+              "hip_height_above_knee_ratio": 0.1123,
+              "knee_angle_degrees": 45.53,
+              "offset_s": 0.0,
+              "timestamp_s": 38.0
+            },
+            "end": {
+              "confidence": 0.9206,
+              "hip_height_above_knee_ratio": 0.4865,
+              "knee_angle_degrees": 118.8,
+              "offset_s": 0.0,
+              "timestamp_s": 39.0
+            },
+            "start": {
+              "confidence": 0.9166,
+              "hip_height_above_knee_ratio": 0.5145,
+              "knee_angle_degrees": 151.74,
+              "offset_s": 0.0,
+              "timestamp_s": 35.0
+            }
+          },
+          "side": "right",
+          "usable_measurement_count": 9
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "label": {
+        "bottom_s": 42.0,
+        "clean": true,
+        "counted": true,
+        "end_s": 43.0,
+        "failures": [],
+        "start_s": 40.0
+      },
+      "preferred_observed_side": "right",
+      "side_reports": [
+        {
+          "available_phase_samples": 0,
+          "coverage_fraction": 0.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": false,
+            "lockout_start_and_end_samples_available": false,
+            "tempo_phase_samples_available": false
+          },
+          "interval_frame_count": 7,
+          "maximum_evidence_gap_s": null,
+          "minimum_measurement_confidence": null,
+          "observed_tempo_s": {
+            "ascent": null,
+            "descent": null,
+            "total": null
+          },
+          "phase_samples": {
+            "bottom": null,
+            "end": null,
+            "start": null
+          },
+          "side": "left",
+          "usable_measurement_count": 0
+        },
+        {
+          "available_phase_samples": 3,
+          "coverage_fraction": 1.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": true,
+            "lockout_start_and_end_samples_available": true,
+            "tempo_phase_samples_available": true
+          },
+          "interval_frame_count": 7,
+          "maximum_evidence_gap_s": 0.5,
+          "minimum_measurement_confidence": 0.9052,
+          "observed_tempo_s": {
+            "ascent": 1.0,
+            "descent": 2.0,
+            "total": 3.0
+          },
+          "phase_samples": {
+            "bottom": {
+              "confidence": 0.9123,
+              "hip_height_above_knee_ratio": 0.1232,
+              "knee_angle_degrees": 41.13,
+              "offset_s": 0.0,
+              "timestamp_s": 42.0
+            },
+            "end": {
+              "confidence": 0.9265,
+              "hip_height_above_knee_ratio": 0.4981,
+              "knee_angle_degrees": 165.42,
+              "offset_s": 0.0,
+              "timestamp_s": 43.0
+            },
+            "start": {
+              "confidence": 0.9209,
+              "hip_height_above_knee_ratio": 0.493,
+              "knee_angle_degrees": 159.53,
+              "offset_s": 0.0,
+              "timestamp_s": 40.0
+            }
+          },
+          "side": "right",
+          "usable_measurement_count": 7
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "label": {
+        "bottom_s": 45.5,
+        "clean": true,
+        "counted": true,
+        "end_s": 46.5,
+        "failures": [],
+        "start_s": 44.0
+      },
+      "preferred_observed_side": "right",
+      "side_reports": [
+        {
+          "available_phase_samples": 0,
+          "coverage_fraction": 0.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": false,
+            "lockout_start_and_end_samples_available": false,
+            "tempo_phase_samples_available": false
+          },
+          "interval_frame_count": 6,
+          "maximum_evidence_gap_s": null,
+          "minimum_measurement_confidence": null,
+          "observed_tempo_s": {
+            "ascent": null,
+            "descent": null,
+            "total": null
+          },
+          "phase_samples": {
+            "bottom": null,
+            "end": null,
+            "start": null
+          },
+          "side": "left",
+          "usable_measurement_count": 0
+        },
+        {
+          "available_phase_samples": 3,
+          "coverage_fraction": 1.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": true,
+            "lockout_start_and_end_samples_available": true,
+            "tempo_phase_samples_available": true
+          },
+          "interval_frame_count": 6,
+          "maximum_evidence_gap_s": 0.5,
+          "minimum_measurement_confidence": 0.9206,
+          "observed_tempo_s": {
+            "ascent": 1.0,
+            "descent": 1.5,
+            "total": 2.5
+          },
+          "phase_samples": {
+            "bottom": {
+              "confidence": 0.9222,
+              "hip_height_above_knee_ratio": 0.1481,
+              "knee_angle_degrees": 45.08,
+              "offset_s": 0.0,
+              "timestamp_s": 45.5
+            },
+            "end": {
+              "confidence": 0.9326,
+              "hip_height_above_knee_ratio": 0.502,
+              "knee_angle_degrees": 172.87,
+              "offset_s": 0.0,
+              "timestamp_s": 46.5
+            },
+            "start": {
+              "confidence": 0.9331,
+              "hip_height_above_knee_ratio": 0.5011,
+              "knee_angle_degrees": 120.66,
+              "offset_s": 0.0,
+              "timestamp_s": 44.0
+            }
+          },
+          "side": "right",
+          "usable_measurement_count": 6
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "label": {
+        "bottom_s": 49.0,
+        "clean": true,
+        "counted": true,
+        "end_s": 50.0,
+        "failures": [],
+        "start_s": 47.5
+      },
+      "preferred_observed_side": "right",
+      "side_reports": [
+        {
+          "available_phase_samples": 0,
+          "coverage_fraction": 0.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": false,
+            "lockout_start_and_end_samples_available": false,
+            "tempo_phase_samples_available": false
+          },
+          "interval_frame_count": 6,
+          "maximum_evidence_gap_s": null,
+          "minimum_measurement_confidence": null,
+          "observed_tempo_s": {
+            "ascent": null,
+            "descent": null,
+            "total": null
+          },
+          "phase_samples": {
+            "bottom": null,
+            "end": null,
+            "start": null
+          },
+          "side": "left",
+          "usable_measurement_count": 0
+        },
+        {
+          "available_phase_samples": 3,
+          "coverage_fraction": 1.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": true,
+            "lockout_start_and_end_samples_available": true,
+            "tempo_phase_samples_available": true
+          },
+          "interval_frame_count": 6,
+          "maximum_evidence_gap_s": 0.5,
+          "minimum_measurement_confidence": 0.8927,
+          "observed_tempo_s": {
+            "ascent": 1.0,
+            "descent": 1.5,
+            "total": 2.5
+          },
+          "phase_samples": {
+            "bottom": {
+              "confidence": 0.9065,
+              "hip_height_above_knee_ratio": 0.1215,
+              "knee_angle_degrees": 46.44,
+              "offset_s": 0.0,
+              "timestamp_s": 49.0
+            },
+            "end": {
+              "confidence": 0.9183,
+              "hip_height_above_knee_ratio": 0.5073,
+              "knee_angle_degrees": 151.8,
+              "offset_s": 0.0,
+              "timestamp_s": 50.0
+            },
+            "start": {
+              "confidence": 0.9369,
+              "hip_height_above_knee_ratio": 0.5066,
+              "knee_angle_degrees": 127.13,
+              "offset_s": 0.0,
+              "timestamp_s": 47.5
+            }
+          },
+          "side": "right",
+          "usable_measurement_count": 6
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "label": {
+        "bottom_s": 53.0,
+        "clean": true,
+        "counted": true,
+        "end_s": 54.5,
+        "failures": [],
+        "start_s": 51.5
+      },
+      "preferred_observed_side": "right",
+      "side_reports": [
+        {
+          "available_phase_samples": 0,
+          "coverage_fraction": 0.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": false,
+            "lockout_start_and_end_samples_available": false,
+            "tempo_phase_samples_available": false
+          },
+          "interval_frame_count": 7,
+          "maximum_evidence_gap_s": null,
+          "minimum_measurement_confidence": null,
+          "observed_tempo_s": {
+            "ascent": null,
+            "descent": null,
+            "total": null
+          },
+          "phase_samples": {
+            "bottom": null,
+            "end": null,
+            "start": null
+          },
+          "side": "left",
+          "usable_measurement_count": 0
+        },
+        {
+          "available_phase_samples": 3,
+          "coverage_fraction": 1.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": true,
+            "lockout_start_and_end_samples_available": true,
+            "tempo_phase_samples_available": true
+          },
+          "interval_frame_count": 7,
+          "maximum_evidence_gap_s": 0.5,
+          "minimum_measurement_confidence": 0.9225,
+          "observed_tempo_s": {
+            "ascent": 1.5,
+            "descent": 1.5,
+            "total": 3.0
+          },
+          "phase_samples": {
+            "bottom": {
+              "confidence": 0.9245,
+              "hip_height_above_knee_ratio": 0.1008,
+              "knee_angle_degrees": 42.49,
+              "offset_s": 0.0,
+              "timestamp_s": 53.0
+            },
+            "end": {
+              "confidence": 0.931,
+              "hip_height_above_knee_ratio": 0.4912,
+              "knee_angle_degrees": 176.27,
+              "offset_s": 0.0,
+              "timestamp_s": 54.5
+            },
+            "start": {
+              "confidence": 0.9298,
+              "hip_height_above_knee_ratio": 0.4934,
+              "knee_angle_degrees": 121.88,
+              "offset_s": 0.0,
+              "timestamp_s": 51.5
+            }
+          },
+          "side": "right",
+          "usable_measurement_count": 7
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "label": {
+        "bottom_s": 57.5,
+        "clean": true,
+        "counted": true,
+        "end_s": 58.5,
+        "failures": [],
+        "start_s": 56.0
+      },
+      "preferred_observed_side": "right",
+      "side_reports": [
+        {
+          "available_phase_samples": 0,
+          "coverage_fraction": 0.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": false,
+            "lockout_start_and_end_samples_available": false,
+            "tempo_phase_samples_available": false
+          },
+          "interval_frame_count": 6,
+          "maximum_evidence_gap_s": null,
+          "minimum_measurement_confidence": null,
+          "observed_tempo_s": {
+            "ascent": null,
+            "descent": null,
+            "total": null
+          },
+          "phase_samples": {
+            "bottom": null,
+            "end": null,
+            "start": null
+          },
+          "side": "left",
+          "usable_measurement_count": 0
+        },
+        {
+          "available_phase_samples": 3,
+          "coverage_fraction": 1.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": true,
+            "lockout_start_and_end_samples_available": true,
+            "tempo_phase_samples_available": true
+          },
+          "interval_frame_count": 6,
+          "maximum_evidence_gap_s": 0.5,
+          "minimum_measurement_confidence": 0.9216,
+          "observed_tempo_s": {
+            "ascent": 1.0,
+            "descent": 1.5,
+            "total": 2.5
+          },
+          "phase_samples": {
+            "bottom": {
+              "confidence": 0.9262,
+              "hip_height_above_knee_ratio": 0.3398,
+              "knee_angle_degrees": 42.72,
+              "offset_s": 0.0,
+              "timestamp_s": 57.5
+            },
+            "end": {
+              "confidence": 0.9336,
+              "hip_height_above_knee_ratio": 0.4956,
+              "knee_angle_degrees": 169.91,
+              "offset_s": 0.0,
+              "timestamp_s": 58.5
+            },
+            "start": {
+              "confidence": 0.9308,
+              "hip_height_above_knee_ratio": 0.4901,
+              "knee_angle_degrees": 107.58,
+              "offset_s": 0.0,
+              "timestamp_s": 56.0
+            }
+          },
+          "side": "right",
+          "usable_measurement_count": 6
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "label": {
+        "bottom_s": 63.5,
+        "clean": true,
+        "counted": true,
+        "end_s": 65.5,
+        "failures": [],
+        "start_s": 62.0
+      },
+      "preferred_observed_side": "right",
+      "side_reports": [
+        {
+          "available_phase_samples": 0,
+          "coverage_fraction": 0.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": false,
+            "lockout_start_and_end_samples_available": false,
+            "tempo_phase_samples_available": false
+          },
+          "interval_frame_count": 8,
+          "maximum_evidence_gap_s": null,
+          "minimum_measurement_confidence": null,
+          "observed_tempo_s": {
+            "ascent": null,
+            "descent": null,
+            "total": null
+          },
+          "phase_samples": {
+            "bottom": null,
+            "end": null,
+            "start": null
+          },
+          "side": "left",
+          "usable_measurement_count": 0
+        },
+        {
+          "available_phase_samples": 3,
+          "coverage_fraction": 1.0,
+          "gate_observability": {
+            "depth_bottom_sample_available": true,
+            "lockout_start_and_end_samples_available": true,
+            "tempo_phase_samples_available": true
+          },
+          "interval_frame_count": 8,
+          "maximum_evidence_gap_s": 0.5,
+          "minimum_measurement_confidence": 0.9072,
+          "observed_tempo_s": {
+            "ascent": 2.0,
+            "descent": 1.5,
+            "total": 3.5
+          },
+          "phase_samples": {
+            "bottom": {
+              "confidence": 0.9129,
+              "hip_height_above_knee_ratio": 0.0621,
+              "knee_angle_degrees": 41.43,
+              "offset_s": 0.0,
+              "timestamp_s": 63.5
+            },
+            "end": {
+              "confidence": 0.9267,
+              "hip_height_above_knee_ratio": 0.5071,
+              "knee_angle_degrees": 163.09,
+              "offset_s": 0.0,
+              "timestamp_s": 65.5
+            },
+            "start": {
+              "confidence": 0.9179,
+              "hip_height_above_knee_ratio": 0.4537,
+              "knee_angle_degrees": 74.2,
+              "offset_s": 0.0,
+              "timestamp_s": 62.0
+            }
+          },
+          "side": "right",
+          "usable_measurement_count": 8
+        }
+      ]
+    }
+  ],
+  "labels": "docs/bakeoff_labels/gym_w_barbell.labels.json",
+  "pose_export": "docs/bakeoff_results/2026-05-24_in_app_mediapipe/gym_w_barbell_mediapipe_quick_pose.json",
+  "purpose": "clean_rep_gate_observability_only",
+  "schema_version": 1,
+  "side_coverage": {
+    "left": {
+      "coverage_fraction": 0.0,
+      "eligible_frame_count": 155,
+      "measurement_intervals": {
+        "maximum_interval_s": null,
+        "median_interval_s": null,
+        "p95_interval_s": null,
+        "sample_count": 0
+      },
+      "usable_measurement_count": 0
+    },
+    "right": {
+      "coverage_fraction": 0.8323,
+      "eligible_frame_count": 155,
+      "measurement_intervals": {
+        "maximum_interval_s": 3.0,
+        "median_interval_s": 0.5,
+        "p95_interval_s": 0.5,
+        "sample_count": 129
+      },
+      "usable_measurement_count": 129
+    }
+  },
+  "source_video": {
+    "duration_s": 78.74166666666666,
+    "filename": "photos_video_4721AA97-5948-4888-82DF-10F238EAE7A7.mov",
+    "fps_nominal": 29.9841251373291,
+    "resolution": {
+      "height": 2160,
+      "width": 3840
+    }
+  }
+}

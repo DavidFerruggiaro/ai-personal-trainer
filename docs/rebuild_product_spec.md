@@ -357,7 +357,7 @@ Current boundary (2026-08-03):
 - M1 is complete enough to support M2: MediaPipe is selected and portrait live viability passed.
 - M2.1-M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and the bounded M2.14a in-memory summary slice are done.
 - M2.5b's solo-reachable post-arm weak-setup recovery passes both full automated verification and a focused physical Retry/Start Anyway flow through low-confidence review.
-- M2.6 remains open for countdown choices/failure behavior and physical confirmation of the installed stable-preview candidate for the measured transition delay. Instrumentation found correct five-second countdown/domain timing but a 9.04-second gap to the first active pose observation. M2.10 remains open for real clean gates; its normal and low-confidence review presentation pass physically. Parent M2.14 remains open for its deferred natural multi-set summary pass.
+- M2.6 remains open for countdown choices/failure behavior and physical confirmation of the installed stable-preview candidate for the measured transition delay. Instrumentation found correct five-second countdown/domain timing but a 9.04-second gap to the first active pose observation. M2.10 remains open for real clean gates; its normal and low-confidence review presentation pass physically, but the 2026-08-03 offline audit found the local barbell labels positive-only and the export too coarse for production threshold selection. Parent M2.14 remains open for its deferred natural multi-set summary pass.
 - M2.13 persistence has not started. The M2.14a summary remains transient and disappears after leaving the ended session.
 - The consolidated checkpoint built, installed, and passed physical Stop/review/edit/discard behavior on the connected iPhone on 2026-08-03. A signed M2.5b replacement then passed the focused solo recovery and low-confidence review flow on the same device; the full offline harness passes with TrainerCore at 56 tests.
 
@@ -365,6 +365,6 @@ Current boundary (2026-08-03):
 
 - What is the minimum TrainerApp visual design system?
 - What default local video-retention policy balances useful evidence with storage pressure?
-- What evidence threshold is required before depth/lockout/tempo can produce user-facing clean conclusions?
+- What evidence threshold beyond the documented first-candidate floor is required for production depth/lockout/tempo conclusions across lifters and capture conditions? The minimum next-data contract is recorded in `docs/bakeoff_results/2026-08-03_clean_rep_evidence/README.md`.
 - When should front/three-quarter form checks re-enter the plan?
 - Which lower-body exercise follows back squat after the vertical slice proves itself?

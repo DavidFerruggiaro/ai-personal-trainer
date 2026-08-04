@@ -1,0 +1,81 @@
+{
+  "classification_performed": false,
+  "configuration": {
+    "maximum_phase_offset_s": 0.5,
+    "minimum_frame_confidence": 0.3,
+    "minimum_landmark_confidence": 0.5,
+    "target_timing_resolution_s": 0.15
+  },
+  "engine": {
+    "config": {
+      "max_frame_dimension": "1080",
+      "max_sample_fps": "10",
+      "min_pose_detection_confidence": "0.30",
+      "min_pose_presence_confidence": "0.30",
+      "min_tracking_confidence": "0.30",
+      "model": "pose_landmarker_full.task",
+      "num_poses": "1",
+      "running_mode": "video",
+      "source": "prerecorded_video"
+    },
+    "name": "mediapipe_pose_landmarker",
+    "version": "MediaPipeTasksVision"
+  },
+  "frame_summary": {
+    "eligible_frame_count": 607,
+    "exported_frame_count": 610,
+    "finite_timestamp_count": 610,
+    "source_cadence": {
+      "maximum_interval_s": 0.1,
+      "median_interval_s": 0.1,
+      "p95_interval_s": 0.1,
+      "sample_count": 610
+    },
+    "target_timing_resolution_supported": true
+  },
+  "interpretation_guardrails": [
+    "No depth, lockout, tempo/control, or clean pass/fail classification is produced.",
+    "Hip height above knee is a tracked-joint proxy, not a validated hip-crease depth rule.",
+    "A gate threshold requires labeled pass and failure examples plus held-out validation.",
+    "Sampling cadence limits event timing precision regardless of timestamp arithmetic."
+  ],
+  "label_class_coverage": null,
+  "labeled_rep_evidence": [],
+  "labels": null,
+  "pose_export": "docs/bakeoff_results/2026-05-24_in_app_mediapipe/bodyweight_squats_v2_mediapipe_pose_landmarker_pose.json",
+  "purpose": "clean_rep_gate_observability_only",
+  "schema_version": 1,
+  "side_coverage": {
+    "left": {
+      "coverage_fraction": 0.0906,
+      "eligible_frame_count": 607,
+      "measurement_intervals": {
+        "maximum_interval_s": 16.7,
+        "median_interval_s": 0.1,
+        "p95_interval_s": 6.305,
+        "sample_count": 55
+      },
+      "usable_measurement_count": 55
+    },
+    "right": {
+      "coverage_fraction": 0.972,
+      "eligible_frame_count": 607,
+      "measurement_intervals": {
+        "maximum_interval_s": 0.5,
+        "median_interval_s": 0.1,
+        "p95_interval_s": 0.1,
+        "sample_count": 590
+      },
+      "usable_measurement_count": 590
+    }
+  },
+  "source_video": {
+    "duration_s": 61,
+    "filename": "photos_video_245372FA-5C35-41F3-B01F-D4875EE36FE7.mov",
+    "fps_nominal": 30,
+    "resolution": {
+      "height": 1280,
+      "width": 720
+    }
+  }
+}

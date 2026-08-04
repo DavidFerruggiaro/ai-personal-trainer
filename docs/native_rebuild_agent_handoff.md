@@ -216,6 +216,7 @@ Current M1 state:
 - The fake 600ms processing delay and temporary stopped card are gone. Processing has retry/discard failure handling, and in-flight processing can be discarded if it hangs.
 - M2.10 now shows a compact load × canonical-count review, discloses provisional/final differences, labels setup overrides low-confidence, and keeps `Next Set` primary with discard/end secondary.
 - Clean status remains honestly unavailable because depth/lockout/tempo gates are still unassessed. The review explicitly says unavailable is not `0 clean reps`; no missing evidence defaults to clean.
+- The 2026-08-03 M2.10 offline audit replayed all three local MediaPipe exports with deterministic coverage/geometry tooling. The labeled barbell set has strong visible-leg continuity during all seven reps, but only clean positives, 0.50 s sampling, ambiguous coarse lockout boundaries, and tracked hip-vs-knee geometry that cannot represent judged depth directly. This is a no-go for production clean thresholds and a go for the documented full-rate, gate-labeled data tranche; no native gate was invented. See `docs/bakeoff_results/2026-08-03_clean_rep_evidence/README.md`.
 - M2.12 is done: zero-rep discard is immediate, canonical/provisional detected reps require confirmation, and corrected review discard rolls back the auto-saved set while restoring its ordinal/load. All three paths passed on device. Normal and low-confidence reviews pass physically; M2.10 remains `in_progress` only under its clean-evidence guardrail.
 - M2.11 is complete in both automated and physical verification. `TrainerCore` preserves immutable original load/analyzer summaries, derives current values from ordered typed `user_edit` corrections, distinguishes manual clean evidence from analyzer evidence, rejects invalid counts without clamping, and keeps corrected review discard working.
 - `TrainerApp` has a compact inline review editor for load, counted reps, and clean reps. Applying edits updates the already auto-saved in-memory set; no `Save Set` action or per-rep editing was added.
@@ -694,7 +695,7 @@ Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
 2. M1.11 is complete: separate standing and squat artifacts pass the portrait physical-device viability protocol.
-3. M2.1 through M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and M2.14a are complete. M2.6 stays open for duration choices, failure behavior, and physical confirmation of the installed transition candidate. M2.10 stays open for real clean gates; its normal and low-confidence review presentation now pass physically. Parent M2.14 stays open for deferred physical multi-set summary inspection.
+3. M2.1 through M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and M2.14a are complete. M2.6 stays open for duration choices, failure behavior, and physical confirmation of the installed transition candidate. M2.10 stays open for real clean gates; its normal and low-confidence review presentation now pass physically, while the offline evidence audit explicitly rejects threshold invention from the current positive-only/coarse dataset. Parent M2.14 stays open for deferred physical multi-set summary inspection.
 4. Use `SquatTrainer.xcworkspace` for both `PoseBakeoff` and `TrainerApp` (MediaPipe via CocoaPods on both).
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
 6. The production analyzer already separates counted reps from clean gates. Preserve that boundary; the Python state machine is reference logic, not a literal Swift specification.
@@ -704,6 +705,7 @@ Current boundary:
 10. M2.V1 deterministic verification is done on `agent/overnight-native-verification`: `TrainerRuntime` has 19 passing tests, including comprehensive analyzer-summary mapping characterization and one synthetic package-contract scenario, and the unified harness passes both host-architecture app builds. It proves deterministic package contracts and compilation, not production-default/controller wiring, physical behavior, or accuracy.
 11. The merged UI pass clarifies state/exit safety, zero/discard/rollback recovery, and adaptive review/summary accessibility without changing domain behavior. Standard-size physical review and discard/rollback recovery were exercised; larger-text, interruption, and summary layouts remain unverified.
 12. The product checkpoint excludes `.agents/` and `skills-lock.json`.
+13. Use `scripts/audit_clean_rep_evidence.py` for clean-gate observability replay. Before a native gate candidate, collect full-rate side-view barbell exports with independent pass/fail/unknown labels for depth, lockout, and tempo/control, including standing-reference windows and both classes per gate. Keep clean conclusions unavailable until held-out validation supports them.
 
 ## Open UX / Product Discussion (do not invent alone)
 

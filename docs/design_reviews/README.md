@@ -19,6 +19,7 @@ YYYY-MM-DD_pose_estimator_architecture.md
 
 Current reviews:
 
+- `2026-08-03_m2_13_local_persistence_security.md`: scoped sensitive local workout data, logging, deletion, migration, and heavy-artifact boundaries before M2.13a implementation.
 - `2026-07-25_native_ui_ux_audit.md`: ranked the complete quick-session UI journey and bounded the safe implementation to three presentation-only outcome initiatives.
 - `2026-07-11_post_m2_11_roadmap_review.md`: ranked offline code-only work, blocked physical gates, and cleanup/security timing after M2.11.
 - `2026-07-24_native_verification_harness.md`: actual-state audit, deterministic native harness implementation, exact verification results, proof limits, physical follow-ups, and the final two-commit split.

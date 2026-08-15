@@ -1,26 +1,73 @@
 # Bakeoff Manual Labels
 
-Manual labels are coaching/rep labels, not anatomical keypoint labels.
+Manual labels are human coaching/rep judgments, not anatomical keypoint labels and not production analyzer output.
 
-The first label file is:
+## Versions
 
-- `gym_w_barbell.labels.json`: first-pass side-view back-squat labels for the working set in `gym_w_barbell.mov`.
+- `gym_w_barbell.labels.json` remains the original human-verified v1 label file. It is preserved unchanged as historical rep-count evidence.
+- `gym_w_barbell_v2.labels.json` is an AI-assisted, frame-accurate positive-only prelabel of the same source. Its provenance explicitly sets `human_verified: false`; it must be independently reviewed gate by gate before it counts as ground truth.
+- `squat_labels_v2.schema.json` is the machine-readable v2 contract for new side-view back-squat clean-gate evidence.
+- `squat_v2_template.labels.json` is a fill-in template, not evidence. Replace every placeholder before using it.
 
-Schema notes:
+The Python loader in `scripts/squat_label_schema.py` reads both versions. It exposes a canonical v2-shaped view to offline tools.
 
-- Clip-level fields identify exercise, camera angle, source video, capture conditions, and whether the capture should be treated as low confidence.
-- `human_verified` records whether the label file has been checked against video by a person.
-- Rep-level fields are `start_s`, `bottom_s`, `end_s`, `counted`, `clean`, and `failures`.
-- Valid failure values are `depth`, `lockout`, `knee_tracking`, `torso_angle`, `tempo_control`, `capture_confidence`, and `unknown`.
-- First-pass times may be coarse. For quick 2 FPS exports, use a scoring tolerance that reflects the export cadence.
+## V2 Contract
 
-Current verification state:
+V2 fixes the ambiguity found by the 2026-08-03 audit:
 
-- `gym_w_barbell.labels.json` was human-verified on 2026-05-25. The user confirmed seven clean completed reps and timestamps that were very close by rough video scrubbing.
+- Each required side-view gate—`depth`, `lockout`, and `tempo_control`—is labeled independently as `pass`, `fail`, or `unknown`.
+- `pass` and `fail` require `evidence_sufficiency: sufficient`.
+- `unknown` requires `evidence_sufficiency: insufficient`.
+- Overall rep and per-gate label confidence use `high`, `medium`, or `low`.
+- `start`, `bottom`, and `end` each contain a zero-based `source_frame_index` and a presentation `timestamp_s` measured from the start of the original video.
+- Every rep has a nonzero standing-reference window outside its motion interval. Lockout is judged relative to this stable top evidence, not one terminal sample.
+- Capture conditions/notes, per-rep capture notes, annotator/method/tool/timestamp provenance, and the original video's SHA-256 are explicit.
+- `label_provenance.human_verified` defaults to `true` for backwards compatibility with the original human-label contract. AI-assisted or automated prelabels must set it to `false`.
+- Tempo/control has one clip-level operational definition with pass, fail, and unknown criteria. Phase duration stays observable evidence; fast does not automatically mean uncontrolled.
 
-Clean-gate limitation:
+Source frame indexes refer to original video frames in presentation order. They are not indexes into the sampled `PoseRunExport.frames` array. The timestamp is the join key used to find the nearest exported pose sample, including for variable-frame-rate input.
 
-- The current v1 schema is sufficient for the first rep-event scoring loop, but not for choosing depth, lockout, or tempo/control thresholds. The only verified file contains seven clean positives and no gate failures.
-- On a non-clean rep, absence from `failures` does not prove that another gate passed; that gate may simply be unjudged. Audit tooling must treat it as unresolved.
-- The next label revision should preserve the existing event fields while adding independent `pass` / `fail` / `unknown` status for every required gate, a standing-reference window for lockout, frame-accurate events, and explicit label confidence/evidence sufficiency.
-- See `docs/bakeoff_results/2026-08-03_clean_rep_evidence/README.md` for the measured gap and the next-data contract. Existing v1 labels remain valid rep-count evidence; they are not retroactively promoted to clean-gate evidence.
+The JSON Schema covers structure and enum constraints. `scripts/validate_squat_labels.py` additionally enforces semantic rules such as event order, unique rep indexes, source bounds, standing-window placement, source identity, and evidence-sufficiency consistency.
+
+## Conservative V1 Adapter
+
+V1 fields remain readable:
+
+- `start_s`, `bottom_s`, and `end_s` become timestamp-only events with no source frame index.
+- An explicitly named required gate in `failures` remains an explicit `fail` label.
+- Every unmentioned gate becomes `unknown`.
+- A legacy `clean: true` value is retained as legacy metadata only. It never becomes independent depth, lockout, or tempo/control pass evidence.
+- V1 has no standing-reference window, label confidence, evidence sufficiency, content hash, or complete provenance; the adapter marks those fields unrecorded rather than fabricating them.
+
+This means the historical v1 label and committed 2026-08-03 reports remain valid historical artifacts, but new v2 audit output will conservatively show that v1 has no independent gate-pass labels.
+
+## Validate And Audit
+
+From the repository root:
+
+```bash
+python3 scripts/validate_squat_labels.py \
+  --labels path/to/clip.labels.json \
+  --pose-export path/to/clip_pose.json \
+  --source-video path/to/clip.mov
+```
+
+Then produce the deterministic observability report:
+
+```bash
+python3 scripts/audit_clean_rep_evidence.py \
+  --labels path/to/clip.labels.json \
+  --pose-export path/to/clip_pose.json \
+  --source-video path/to/clip.mov \
+  --output path/to/clip_evidence_audit.json
+```
+
+The audit validates first, reports cadence, per-side geometry/coverage, exact event alignment, standing-reference evidence, and explicit label-class coverage, then keeps `classification_performed: false`. It contains no production clean-rep thresholds.
+
+Run all deterministic Python tests with:
+
+```bash
+python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+```
+
+The exact capture/import procedure for the next gym video is in `docs/bakeoff_results/2026-08-03_clean_rep_evidence/GYM_VIDEO_RUNBOOK.md`.

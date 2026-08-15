@@ -22,22 +22,34 @@ No native scoring gate was added as part of this audit. That is a deliberate evi
 
 It does **not** classify a gate or a clean rep. Its output explicitly records `classification_performed: false`.
 
+The v2 workflow added after this audit also validates strict frame-accurate labels, audits stable standing-reference windows, verifies source-video identity by SHA-256, and accepts arbitrary full-rate `PoseRunExport.frames` cadence without assuming a fixed sampling interval. See `docs/bakeoff_labels/README.md` for the label contract and `GYM_VIDEO_RUNBOOK.md` for the exact next capture/import process.
+
 Run the deterministic tests:
 
 ```bash
 python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
 ```
 
-Recreate the labeled barbell report:
+Validate the preserved v1 barbell labels and export through the conservative adapter:
+
+```bash
+python3 scripts/validate_squat_labels.py \
+  --labels docs/bakeoff_labels/gym_w_barbell.labels.json \
+  --pose-export docs/bakeoff_results/2026-05-24_in_app_mediapipe/gym_w_barbell_mediapipe_quick_pose.json
+```
+
+Produce a current report-schema-v2 replay without overwriting the historical report:
 
 ```bash
 python3 scripts/audit_clean_rep_evidence.py \
   --pose-export docs/bakeoff_results/2026-05-24_in_app_mediapipe/gym_w_barbell_mediapipe_quick_pose.json \
   --labels docs/bakeoff_labels/gym_w_barbell.labels.json \
-  --output docs/bakeoff_results/2026-08-03_clean_rep_evidence/gym_w_barbell_evidence_audit.json
+  --output /tmp/gym_w_barbell_evidence_audit_v2.json
 ```
 
 The two unlabeled smoke exports were audited with the same command minus `--labels`.
+
+The three committed JSON reports below remain byte-for-byte historical report-schema-v1 evidence from the completed audit at commit `ee56c26`. They are intentionally not regenerated in place. Current tooling emits report schema v2 and, for v1 inputs, never promotes a legacy global `clean` label into independent required-gate pass labels.
 
 ## Inputs And Coverage
 
@@ -80,3 +92,25 @@ Production validation must then expand across lifters, body proportions, clothin
 - `goblet_squat_w_variations_evidence_audit.json`: quick unlabeled coverage smoke.
 
 These reports are deterministic for fixed inputs and CLI configuration; they intentionally contain no creation timestamp.
+
+## V2 Tooling Result
+
+The follow-on schema/tooling slice implements the data-collection contract without changing the no-go decision:
+
+- Machine-readable `docs/bakeoff_labels/squat_labels_v2.schema.json` plus a fill-in template.
+- Independent depth/lockout/tempo-control labels with explicit confidence, sufficiency, notes, and provenance.
+- Zero-based original-source frame indexes plus timestamps for start, bottom, end, and a non-overlapping standing-reference window.
+- A conservative v1 adapter: explicit named failures stay failures; every unmentioned gate is unknown, including on legacy `clean: true` reps.
+- Strict `scripts/validate_squat_labels.py` source/label/export checks and report-schema-v2 observability output from `scripts/audit_clean_rep_evidence.py`.
+- Optional `source_video.sha256` in new app-owned pose exports, preserving decode compatibility with old exports while allowing Photos temporary filenames to match by content.
+- Synthetic v1/v2 labels and a deterministic 10 FPS future-export fixture.
+
+Production clean gates remain unimplemented. `SquatAnalyzer` must continue to emit `not_assessed`, and `TrainerApp` must continue to show `Clean reps unavailable` until labeled pass/fail coverage and held-out validation support a later threshold candidate.
+
+## Legacy Barbell Clip V2 Replay
+
+The existing `gym_w_barbell.mov` is useful for the new workflow. A local ignored replay processed all 78.74 seconds at 10 FPS with the bundled full MediaPipe model: 787 timestamped samples, 97.3% pose presence, 93.96% usable right-side coverage across eligible frames, and complete right-side phase plus standing-reference evidence for all seven reps. Median, p95, and maximum export intervals are all 0.10 seconds, so the audit's 0.15-second timing target is supported.
+
+`docs/bakeoff_labels/gym_w_barbell_v2.labels.json` records source-frame events, standing-reference windows, and independent AI-assisted pass prelabels for all three gates. Its provenance is deliberately `human_verified: false`. It contributes no human ground-truth class coverage until a person confirms each gate independently, and it still contains zero failure examples. The no-go for production thresholds and user-facing clean conclusions is unchanged.
+
+The local replay export identifies itself as `offline_diagnostic_not_native_app_export`. It uses the same bundled model but does not replace a physical-iPhone `Run MediaPipe` export when verifying the authoritative app import path. The replay also exposed and fixed the runbook's rotated-iPhone frame-index command: JSON extraction now ignores display-matrix side data instead of counting those CSV lines as frames.

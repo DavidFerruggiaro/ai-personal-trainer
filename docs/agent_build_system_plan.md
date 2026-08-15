@@ -106,10 +106,11 @@ Already implemented:
 - `docs/tasks/M2_back_squat_vertical_slice_tasks.md`
 - Native iOS skeleton
 - MediaPipe-backed live pose abstraction and `TrainerApp` camera flow
-- Foundation-only `TrainerCore` with 53 tests through M2.14a
-- Full-sequence finalization, in-memory auto-save, honest review, corrections, discard rollback, and transient ended-session projection
+- Foundation-only `TrainerCore` with 56 tests through M2.14a/M2.13a's `SetResult` boundary
+- Full-sequence finalization, durable structured auto-save, honest review, transactional correction replacement, discard rollback/deletion, and transient ended-session projection
 - `TrainerRuntime` analyzer-to-domain mapping plus a deterministic synthetic package-contract scenario
-- `scripts/verify_native_ios.sh` as the one-command baseline for all four package suites and both single-architecture workspace Simulator builds
+- Versioned local-only `TrainerPersistence` with 10 isolated SwiftData tests and no heavy payload fields
+- `scripts/verify_native_ios.sh` as the one-command baseline for all five package suites and both single-architecture workspace Simulator builds
 
 ### Missing But Planned
 
@@ -157,7 +158,7 @@ Use now:
 6. Agent updates docs and decision log.
 7. Agent stops or asks for approval before the next ticket.
 
-Xcode is installed, all four package suites pass, and both apps build through `ios/SquatTrainer.xcworkspace`. Run `scripts/verify_native_ios.sh` before handing off native changes; use `--packages-only` while iterating. The harness verifies deterministic contracts and compilation, not device behavior or pose accuracy. Current work should still use one bounded ticket per loop because several M2 tickets retain physical gates.
+Xcode is installed, all five package suites pass, and both apps build through `ios/SquatTrainer.xcworkspace`. Run `scripts/verify_native_ios.sh` before handing off native changes; use `--packages-only` while iterating. The harness verifies deterministic contracts, local-store reopen behavior, and compilation, not physical restart, device behavior, or pose accuracy. Current work should still use one bounded ticket per loop because several M2 tickets retain physical gates.
 
 ### Fresh Chat Loop
 
@@ -216,7 +217,7 @@ Agents must not:
 1. Continue from the locally finalized M2.V1 work on `agent/overnight-native-verification`; it starts from checkpoint `aa57e11` and intentionally excludes `.agents/` and `skills-lock.json`.
 2. At the next device session, close or update the physical gates for M2.5-M2.7, M2.9, M2.10, M2.11 UI, M2.12, and the parent M2.14 summary.
 3. For offline work, choose exactly one bounded ticket from `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md`. M2.11a atomic edits remain the next listed code-hardening option; do not start it without a new user choice.
-4. Run `scripts/verify_native_ios.sh` for the four Swift package suites and both workspace Simulator builds.
+4. Run `scripts/verify_native_ios.sh` for the five Swift package suites and both workspace Simulator builds.
 5. Update the task file, handoff, README, decision log, and applicable review report.
 6. Stop and ask before the next ticket.
 

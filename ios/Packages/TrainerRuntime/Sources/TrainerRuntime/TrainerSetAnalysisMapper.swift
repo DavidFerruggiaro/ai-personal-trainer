@@ -1,10 +1,12 @@
+import PoseCore
 import SquatAnalysis
 import TrainerCore
 
 public enum TrainerSetAnalysisMapper {
     public static func summary(
         from result: SquatAnalysisResult,
-        provisionalCountedReps: Int
+        provisionalCountedReps: Int,
+        poseEngine: PoseEngineInfo? = nil
     ) -> SetAnalysisSummary {
         let cleanResult: SetCleanResult
         if result.countedReps > 0, let cleanReps = result.cleanReps {
@@ -36,7 +38,17 @@ public enum TrainerSetAnalysisMapper {
                 )
             },
             framesObserved: result.framesObserved,
-            framesAnalyzed: result.framesAnalyzed
+            framesAnalyzed: result.framesAnalyzed,
+            modelMetadata: SetResultModelMetadata(
+                poseEngine: poseEngine.map { engine in
+                    SetResultModelComponentMetadata(
+                        name: engine.name,
+                        version: engine.version,
+                        configuration: engine.config
+                    )
+                },
+                analyzer: SetResultModelComponentMetadata(name: "SquatAnalyzer")
+            )
         )
     }
 }

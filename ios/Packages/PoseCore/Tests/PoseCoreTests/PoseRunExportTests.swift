@@ -2,12 +2,22 @@ import XCTest
 @testable import PoseCore
 
 final class PoseRunExportTests: XCTestCase {
+    func testSourceVideoInfoDecodesLegacyJSONWithoutSHA256() throws {
+        let data = Data(#"{"filename":"legacy.mov"}"#.utf8)
+
+        let decoded = try JSONDecoder().decode(SourceVideoInfo.self, from: data)
+
+        XCTAssertEqual(decoded.filename, "legacy.mov")
+        XCTAssertNil(decoded.sha256)
+    }
+
     func testPoseRunExportRoundTripsThroughJSON() throws {
         let export = PoseRunExport(
             appVersion: "PoseBakeoff 0.1",
             engine: PoseEngineInfo(name: "apple_vision", version: "1"),
             sourceVideo: SourceVideoInfo(
                 filename: "squat_side_001.mov",
+                sha256: String(repeating: "a", count: 64),
                 durationSeconds: 12.4,
                 width: 1920,
                 height: 1080,
@@ -32,6 +42,7 @@ final class PoseRunExportTests: XCTestCase {
         XCTAssertTrue(json.contains("\"created_at\""))
         XCTAssertTrue(json.contains("\"app_version\""))
         XCTAssertTrue(json.contains("\"source_video\""))
+        XCTAssertTrue(json.contains("\"sha256\""))
         XCTAssertTrue(json.contains("\"duration_s\""))
         XCTAssertTrue(json.contains("\"fps_nominal\""))
         XCTAssertTrue(json.contains("\"timestamp_s\""))
@@ -43,6 +54,7 @@ final class PoseRunExportTests: XCTestCase {
 
         XCTAssertEqual(decoded.engine.name, "apple_vision")
         XCTAssertEqual(decoded.sourceVideo.filename, "squat_side_001.mov")
+        XCTAssertEqual(decoded.sourceVideo.sha256, String(repeating: "a", count: 64))
         XCTAssertEqual(decoded.sourceVideo.resolution?.width, 1920)
         XCTAssertEqual(decoded.sourceVideo.resolution?.height, 1080)
         XCTAssertEqual(decoded.frames.first?.landmarks.first?.name, .leftHip)

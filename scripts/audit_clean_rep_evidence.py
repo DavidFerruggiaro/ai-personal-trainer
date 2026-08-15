@@ -11,13 +11,19 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import median
 from typing import Any, Iterable
 
-
-REQUIRED_GATES = ("depth", "lockout", "tempo_control")
+from squat_label_schema import (
+    REQUIRED_GATES,
+    SquatLabelValidationError,
+    build_validation_report,
+    normalize_squat_labels,
+    validate_pose_run_export,
+)
 
 
 @dataclass(frozen=True)
@@ -33,12 +39,20 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pose-export", required=True, type=Path)
     parser.add_argument("--labels", type=Path)
+    parser.add_argument(
+        "--source-video",
+        type=Path,
+        help="Optional original video; v2 validation checks its filename and SHA-256.",
+    )
     parser.add_argument("--output", type=Path)
     parser.add_argument("--minimum-frame-confidence", type=float, default=0.30)
     parser.add_argument("--minimum-landmark-confidence", type=float, default=0.50)
     parser.add_argument("--maximum-phase-offset-s", type=float, default=0.50)
     parser.add_argument("--target-timing-resolution-s", type=float, default=0.15)
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.source_video is not None and args.labels is None:
+        parser.error("--source-video requires --labels")
+    return args
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -213,16 +227,80 @@ def boundary_aware_maximum_gap(
     return max((later - earlier for earlier, later in zip(ordered, ordered[1:])), default=0)
 
 
+def standing_reference_report(
+    measurements: list[LegMeasurement],
+    interval_frame_count: int,
+    window: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if window is None:
+        return None
+    start_s = float(window["start"]["timestamp_s"])
+    end_s = float(window["end"]["timestamp_s"])
+    in_window = [
+        measurement
+        for measurement in measurements
+        if start_s <= measurement.timestamp_s <= end_s
+    ]
+    return {
+        "labeled_window": window,
+        "interval_frame_count": interval_frame_count,
+        "usable_measurement_count": len(in_window),
+        "coverage_fraction": rounded(
+            len(in_window) / interval_frame_count if interval_frame_count else None
+        ),
+        "minimum_measurement_confidence": rounded(
+            min((sample.confidence for sample in in_window), default=None)
+        ),
+        "maximum_evidence_gap_s": rounded(
+            boundary_aware_maximum_gap(in_window, start_s, end_s)
+        ),
+        "knee_angle_degrees": {
+            "minimum": rounded(
+                min((sample.knee_angle_degrees for sample in in_window), default=None), 2
+            ),
+            "median": rounded(
+                median(sample.knee_angle_degrees for sample in in_window)
+                if in_window
+                else None,
+                2,
+            ),
+            "maximum": rounded(
+                max((sample.knee_angle_degrees for sample in in_window), default=None), 2
+            ),
+        },
+        "hip_height_above_knee_ratio": {
+            "minimum": rounded(
+                min(
+                    (sample.hip_height_above_knee_ratio for sample in in_window),
+                    default=None,
+                )
+            ),
+            "median": rounded(
+                median(sample.hip_height_above_knee_ratio for sample in in_window)
+                if in_window
+                else None
+            ),
+            "maximum": rounded(
+                max(
+                    (sample.hip_height_above_knee_ratio for sample in in_window),
+                    default=None,
+                )
+            ),
+        },
+    }
+
+
 def side_rep_report(
     side: str,
     measurements: list[LegMeasurement],
     interval_frame_count: int,
+    standing_interval_frame_count: int,
     label: dict[str, Any],
     maximum_phase_offset_s: float,
 ) -> dict[str, Any]:
-    start_s = float(label["start_s"])
-    bottom_s = float(label["bottom_s"])
-    end_s = float(label["end_s"])
+    start_s = float(label["events"]["start"]["timestamp_s"])
+    bottom_s = float(label["events"]["bottom"]["timestamp_s"])
+    end_s = float(label["events"]["end"]["timestamp_s"])
     in_interval = [
         measurement
         for measurement in measurements
@@ -257,6 +335,12 @@ def side_rep_report(
         observed_descent = bottom_timestamp - start_timestamp
         observed_ascent = end_timestamp - bottom_timestamp
 
+    standing_reference = standing_reference_report(
+        measurements,
+        standing_interval_frame_count,
+        label["standing_reference_window"],
+    )
+
     return {
         "side": side,
         "interval_frame_count": interval_frame_count,
@@ -272,6 +356,7 @@ def side_rep_report(
         ),
         "available_phase_samples": available_phases,
         "phase_samples": phases,
+        "standing_reference": standing_reference,
         "observed_tempo_s": {
             "descent": rounded(observed_descent, 3),
             "ascent": rounded(observed_ascent, 3),
@@ -281,6 +366,10 @@ def side_rep_report(
             "depth_bottom_sample_available": phases["bottom"] is not None,
             "lockout_start_and_end_samples_available": (
                 phases["start"] is not None and phases["end"] is not None
+            ),
+            "lockout_standing_reference_available": (
+                standing_reference is not None
+                and standing_reference["usable_measurement_count"] > 0
             ),
             "tempo_phase_samples_available": available_phases == 3,
         },
@@ -305,13 +394,30 @@ def preferred_side(reports: list[dict[str, Any]]) -> str | None:
 
 def label_class_coverage(labels: dict[str, Any]) -> dict[str, Any]:
     reps = labels.get("reps", [])
-    clean_positives = sum(bool(rep.get("clean")) for rep in reps)
-    clean_negatives = sum(rep.get("clean") is False for rep in reps)
+    explicit_clean_positives = sum(
+        all(rep["gates"][gate]["status"] == "pass" for gate in REQUIRED_GATES)
+        for rep in reps
+    )
+    explicit_clean_negatives = sum(
+        any(rep["gates"][gate]["status"] == "fail" for gate in REQUIRED_GATES)
+        for rep in reps
+    )
+    explicit_clean_unknown = len(reps) - explicit_clean_positives - explicit_clean_negatives
+    legacy_clean_positives = sum(
+        rep.get("legacy") is not None and rep["legacy"].get("clean") is True
+        for rep in reps
+    )
+    legacy_clean_negatives = sum(
+        rep.get("legacy") is not None and rep["legacy"].get("clean") is False
+        for rep in reps
+    )
     gates: dict[str, Any] = {}
     for gate in REQUIRED_GATES:
-        pass_labels = sum(bool(rep.get("clean")) for rep in reps)
-        failure_labels = sum(gate in rep.get("failures", []) for rep in reps)
-        unresolved_labels = len(reps) - pass_labels - failure_labels
+        pass_labels = sum(rep["gates"][gate]["status"] == "pass" for rep in reps)
+        failure_labels = sum(rep["gates"][gate]["status"] == "fail" for rep in reps)
+        unresolved_labels = sum(
+            rep["gates"][gate]["status"] == "unknown" for rep in reps
+        )
         gates[gate] = {
             "pass_labels": pass_labels,
             "failure_labels": failure_labels,
@@ -320,9 +426,14 @@ def label_class_coverage(labels: dict[str, Any]) -> dict[str, Any]:
         }
     return {
         "labeled_reps": len(reps),
-        "clean_positive_reps": clean_positives,
-        "clean_negative_reps": clean_negatives,
-        "human_verified": bool(labels.get("human_verified", {}).get("verified", False)),
+        "clean_positive_reps": explicit_clean_positives,
+        "clean_negative_reps": explicit_clean_negatives,
+        "clean_unknown_reps": explicit_clean_unknown,
+        "legacy_clean_positive_reps": legacy_clean_positives,
+        "legacy_clean_negative_reps": legacy_clean_negatives,
+        "human_verified": bool(
+            labels.get("label_provenance", {}).get("human_verified", False)
+        ),
         "required_gate_class_coverage": gates,
     }
 
@@ -337,7 +448,21 @@ def build_report(
     minimum_landmark_confidence: float,
     maximum_phase_offset_s: float,
     target_timing_resolution_s: float,
+    source_video_path: Path | None = None,
 ) -> dict[str, Any]:
+    pose_validation = validate_pose_run_export(pose_export)
+    normalized_labels = normalize_squat_labels(labels) if labels is not None else None
+    validation = (
+        build_validation_report(
+            labels,
+            labels_path=labels_path or "",
+            pose_export=pose_export,
+            pose_export_path=pose_export_path,
+            source_video_path=source_video_path,
+        )
+        if labels is not None
+        else None
+    )
     frames = [frame for frame in pose_export.get("frames", []) if isinstance(frame, dict)]
     timestamps = [timestamp for frame in frames if (timestamp := frame_timestamp(frame)) is not None]
     cadence = interval_report(timestamps)
@@ -377,17 +502,28 @@ def build_report(
         }
 
     rep_reports: list[dict[str, Any]] = []
-    if labels is not None:
-        for position, label in enumerate(labels.get("reps", []), start=1):
-            start_s = float(label["start_s"])
-            bottom_s = float(label["bottom_s"])
-            end_s = float(label["end_s"])
+    if normalized_labels is not None:
+        for position, label in enumerate(normalized_labels.get("reps", []), start=1):
+            events = label["events"]
+            start_s = float(events["start"]["timestamp_s"])
+            bottom_s = float(events["bottom"]["timestamp_s"])
+            end_s = float(events["end"]["timestamp_s"])
             interval_frame_count = sum(start_s <= timestamp <= end_s for timestamp in timestamps)
+            standing_window = label["standing_reference_window"]
+            standing_interval_frame_count = 0
+            if standing_window is not None:
+                standing_start_s = float(standing_window["start"]["timestamp_s"])
+                standing_end_s = float(standing_window["end"]["timestamp_s"])
+                standing_interval_frame_count = sum(
+                    standing_start_s <= timestamp <= standing_end_s
+                    for timestamp in timestamps
+                )
             side_reports = [
                 side_rep_report(
                     side,
                     measurements_by_side[side],
                     interval_frame_count,
+                    standing_interval_frame_count,
                     label,
                     maximum_phase_offset_s,
                 )
@@ -397,12 +533,17 @@ def build_report(
                 {
                     "index": label.get("index", position),
                     "label": {
+                        "events": events,
+                        "standing_reference_window": standing_window,
                         "start_s": rounded(start_s, 3),
                         "bottom_s": rounded(bottom_s, 3),
                         "end_s": rounded(end_s, 3),
                         "counted": bool(label.get("counted")),
-                        "clean": bool(label.get("clean")),
-                        "failures": list(label.get("failures", [])),
+                        "gates": label["gates"],
+                        "label_confidence": label["label_confidence"],
+                        "evidence_sufficiency": label["evidence_sufficiency"],
+                        "capture_notes": label["capture_notes"],
+                        "legacy": label["legacy"],
                     },
                     "preferred_observed_side": preferred_side(side_reports),
                     "side_reports": side_reports,
@@ -410,13 +551,23 @@ def build_report(
             )
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "purpose": "clean_rep_gate_observability_only",
         "classification_performed": False,
         "pose_export": pose_export_path,
         "labels": labels_path,
         "engine": pose_export.get("engine", {}),
         "source_video": pose_export.get("source_video", {}),
+        "pose_export_validation": pose_validation,
+        "label_validation": validation,
+        "label_contract": None
+        if normalized_labels is None
+        else {
+            "input_schema_version": normalized_labels["source_schema_version"],
+            "adapter": normalized_labels["adapter"],
+            "warnings": normalized_labels["adapter_warnings"],
+            "tempo_control_definition": normalized_labels["tempo_control_definition"],
+        },
         "configuration": {
             "minimum_frame_confidence": minimum_frame_confidence,
             "minimum_landmark_confidence": minimum_landmark_confidence,
@@ -433,10 +584,13 @@ def build_report(
             ),
         },
         "side_coverage": side_coverage,
-        "label_class_coverage": label_class_coverage(labels) if labels is not None else None,
+        "label_class_coverage": label_class_coverage(normalized_labels)
+        if normalized_labels is not None
+        else None,
         "labeled_rep_evidence": rep_reports,
         "interpretation_guardrails": [
             "No depth, lockout, tempo/control, or clean pass/fail classification is produced.",
+            "V1 clean labels never imply that an independently unmentioned gate passed.",
             "Hip height above knee is a tracked-joint proxy, not a validated hip-crease depth rule.",
             "A gate threshold requires labeled pass and failure examples plus held-out validation.",
             "Sampling cadence limits event timing precision regardless of timestamp arithmetic.",
@@ -456,12 +610,17 @@ def report_from_args(args: argparse.Namespace) -> dict[str, Any]:
         minimum_landmark_confidence=args.minimum_landmark_confidence,
         maximum_phase_offset_s=args.maximum_phase_offset_s,
         target_timing_resolution_s=args.target_timing_resolution_s,
+        source_video_path=args.source_video,
     )
 
 
 def main() -> None:
     args = parse_args()
-    report = report_from_args(args)
+    try:
+        report = report_from_args(args)
+    except (OSError, json.JSONDecodeError, SquatLabelValidationError) as error:
+        print(f"Evidence audit failed: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
     rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

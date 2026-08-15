@@ -27,7 +27,7 @@ Use this as the operating rhythm for future agents and implementation sessions.
 
 2. Identify the current milestone.
    - Default current milestone: **Milestone 2, Back Squat Vertical Slice** (M1 bakeoff complete; MediaPipe selected).
-   - Current code boundary: M2.1-M2.5, M2.7-M2.9, M2.11, M2.12, M2.14a, M2.V1, and the analysis-summary mapping seam are complete. M2.6 retains countdown-choice/failure and measured transition-latency work; M2.10 retains real clean-evidence gates; parent M2.14 retains its deferred natural multi-set physical check.
+   - Current code boundary: M2.1-M2.5, M2.7-M2.9, M2.11, M2.12, M2.14a, M2.V1, and the analysis-summary mapping seam are complete. M2.13a structured persistence is implemented and automated but awaits physical restart acceptance. M2.6 retains countdown-choice/failure and measured transition-latency work; M2.10 retains real clean-evidence gates; parent M2.14 retains its deferred natural multi-set physical check.
    - M2.6 transition instrumentation is complete and a stable-preview-identity candidate is installed; physical confirmation is deferred until a natural set. Do not infer later implementation work from ticket number alone.
 
 3. Pick one small ticket.
@@ -42,12 +42,12 @@ Use this as the operating rhythm for future agents and implementation sessions.
 5. Verify.
    - Run the smallest relevant checks.
    - From the repository root, use `scripts/verify_native_ios.sh --packages-only` for the package-only quick pass.
-   - Before handing off native iOS changes, use `scripts/verify_native_ios.sh` for all four package suites and both single-architecture workspace Simulator builds.
+   - Before handing off native iOS changes, use `scripts/verify_native_ios.sh` for all five package suites and both single-architecture workspace Simulator builds.
    - Keep SwiftPM sandboxing enabled normally. If package verification is already contained by a trusted outer sandbox and nested SwiftPM sandboxing conflicts, opt out explicitly with `NATIVE_VERIFY_DISABLE_SWIFTPM_SANDBOX=1`; do not carry that opt-out into an unsandboxed full run.
    - For Swift packages, use `swift test --package-path ...`.
    - For `TrainerApp`, always build through `ios/SquatTrainer.xcworkspace`, never the project directly.
    - For Python prototype changes, run the relevant existing manual or scripted checks.
-   - Treat the deterministic harness as contract and compilation evidence only; it does not close physical-device, camera, UI-interaction, performance, or pose-accuracy gates.
+   - Treat the deterministic harness as contract, local-store reopen, and compilation evidence only; it does not close physical restart, device, camera, UI-interaction, performance, or pose-accuracy gates.
 
 6. Review through roles.
    - Product: does this preserve the user experience and trust promise?

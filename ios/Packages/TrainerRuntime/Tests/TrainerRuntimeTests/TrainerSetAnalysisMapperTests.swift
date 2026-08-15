@@ -1,3 +1,4 @@
+import PoseCore
 import SquatAnalysis
 import Testing
 import TrainerCore
@@ -32,7 +33,12 @@ func analysisSummaryPreservesCountsWithoutInventingCleanEvidence() {
 
     let summary = TrainerSetAnalysisMapper.summary(
         from: result,
-        provisionalCountedReps: 2
+        provisionalCountedReps: 2,
+        poseEngine: PoseEngineInfo(
+            name: "mediapipe_pose_landmarker",
+            version: "MediaPipeTasksVision",
+            config: ["model": "pose_landmarker_full.task"]
+        )
     )
 
     #expect(summary.provisionalCountedReps == 2)
@@ -50,6 +56,12 @@ func analysisSummaryPreservesCountsWithoutInventingCleanEvidence() {
     ])
     #expect(summary.framesObserved == 12)
     #expect(summary.framesAnalyzed == 10)
+    #expect(summary.modelMetadata.poseEngine == SetResultModelComponentMetadata(
+        name: "mediapipe_pose_landmarker",
+        version: "MediaPipeTasksVision",
+        configuration: ["model": "pose_landmarker_full.task"]
+    ))
+    #expect(summary.modelMetadata.analyzer?.name == "SquatAnalyzer")
 }
 
 @Test

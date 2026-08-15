@@ -1,0 +1,108 @@
+{
+  "$schema": "../../../docs/bakeoff_labels/squat_labels_v2.schema.json",
+  "schema_version": 2,
+  "clip_id": "synthetic_full_rate_squat",
+  "source_video": {
+    "filename": "synthetic_full_rate_squat.mov",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "duration_s": 1.0,
+    "nominal_fps": 30.0,
+    "frame_count": 31
+  },
+  "exercise": "back_squat",
+  "camera_angle": "side",
+  "capture": {
+    "conditions": [
+      "synthetic",
+      "side_view"
+    ],
+    "confidence_should_be_low": false,
+    "notes": [
+      "Synthetic fixture; not training evidence."
+    ]
+  },
+  "label_provenance": {
+    "annotation_id": "synthetic-v2-001",
+    "annotator_id": "test_fixture",
+    "annotated_at": "2026-08-03T12:00:00Z",
+    "method": "frame_by_frame_video_review",
+    "tool": "synthetic_fixture",
+    "notes": [
+      "Created for deterministic schema tests."
+    ]
+  },
+  "tempo_control_definition": {
+    "version": "manual_v1",
+    "description": "Judge visible interruptions or uncontrolled direction changes independently of phase duration.",
+    "pass_criteria": [
+      "Continuous intentional descent and ascent with no visible loss of control."
+    ],
+    "fail_criteria": [
+      "Visible collapse, bounce, or direction change judged uncontrolled."
+    ],
+    "unknown_criteria": [
+      "Occlusion or sampling prevents a reliable visual judgment."
+    ]
+  },
+  "reps": [
+    {
+      "index": 1,
+      "counted": true,
+      "events": {
+        "start": {
+          "source_frame_index": 9,
+          "timestamp_s": 0.3
+        },
+        "bottom": {
+          "source_frame_index": 18,
+          "timestamp_s": 0.6
+        },
+        "end": {
+          "source_frame_index": 27,
+          "timestamp_s": 0.9
+        }
+      },
+      "standing_reference_window": {
+        "start": {
+          "source_frame_index": 0,
+          "timestamp_s": 0.0
+        },
+        "end": {
+          "source_frame_index": 6,
+          "timestamp_s": 0.2
+        }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "high",
+          "evidence_sufficiency": "sufficient",
+          "notes": [
+            "Synthetic visible bottom."
+          ]
+        },
+        "lockout": {
+          "status": "fail",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": [
+            "Synthetic terminal lockout failure."
+          ]
+        },
+        "tempo_control": {
+          "status": "unknown",
+          "label_confidence": "high",
+          "evidence_sufficiency": "insufficient",
+          "notes": [
+            "Synthetic occlusion prevents control judgment."
+          ]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "insufficient",
+      "capture_notes": [
+        "Synthetic occlusion during ascent."
+      ]
+    }
+  ]
+}

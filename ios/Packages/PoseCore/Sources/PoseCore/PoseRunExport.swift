@@ -14,12 +14,14 @@ public struct PoseEngineInfo: Codable, Equatable, Sendable {
 
 public struct SourceVideoInfo: Codable, Equatable, Sendable {
     public var filename: String
+    public var sha256: String?
     public var durationSeconds: Double?
     public var resolution: VideoResolution?
     public var nominalFPS: Double?
 
     private enum CodingKeys: String, CodingKey {
         case filename
+        case sha256
         case durationSeconds = "duration_s"
         case resolution
         case nominalFPS = "fps_nominal"
@@ -27,12 +29,14 @@ public struct SourceVideoInfo: Codable, Equatable, Sendable {
 
     public init(
         filename: String,
+        sha256: String? = nil,
         durationSeconds: Double? = nil,
         width: Int? = nil,
         height: Int? = nil,
         nominalFPS: Double? = nil
     ) {
         self.filename = filename
+        self.sha256 = sha256
         self.durationSeconds = durationSeconds
         if let width, let height {
             self.resolution = VideoResolution(width: width, height: height)

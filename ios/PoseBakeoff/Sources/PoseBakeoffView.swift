@@ -1,6 +1,7 @@
 import AVFoundation
 import AVKit
 import CoreTransferable
+import CryptoKit
 import PhotosUI
 import PoseCore
 import SwiftUI
@@ -89,6 +90,7 @@ struct PoseBakeoffView: View {
                         PhotosPicker(
                             selection: $selectedPhotosItem,
                             matching: .videos,
+                            preferredItemEncoding: .current,
                             photoLibrary: .shared()
                         ) {
                             Label("Photos", systemImage: "photo.on.rectangle")
@@ -278,9 +280,13 @@ struct PoseBakeoffView: View {
         let track = tracks.first
         let nominalFPS = try await track?.load(.nominalFrameRate)
         let naturalSize = try await track?.load(.naturalSize)
+        let sha256 = try await Task.detached(priority: .utility) {
+            try sourceVideoSHA256(at: url)
+        }.value
 
         return SourceVideoInfo(
             filename: url.lastPathComponent,
+            sha256: sha256,
             durationSeconds: CMTimeGetSeconds(duration),
             width: naturalSize.map { Int($0.width) },
             height: naturalSize.map { Int($0.height) },
@@ -377,6 +383,19 @@ struct PoseBakeoffView: View {
     private func formatElapsed(_ seconds: TimeInterval) -> String {
         String(format: "%.1fs", seconds)
     }
+}
+
+private func sourceVideoSHA256(at url: URL) throws -> String {
+    let handle = try FileHandle(forReadingFrom: url)
+    defer {
+        try? handle.close()
+    }
+
+    var hasher = SHA256()
+    while let data = try handle.read(upToCount: 1024 * 1024), !data.isEmpty {
+        hasher.update(data: data)
+    }
+    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
 }
 
 private struct PickedVideo: Transferable {

@@ -22,3 +22,6 @@ ios/**/xcuserdata/
 *.mov
 *.avi
 *.mkv
+
+# Local full-rate pose exports and labeling scratch artifacts
+datasets/

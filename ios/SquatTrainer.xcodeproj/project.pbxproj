@@ -30,6 +30,7 @@
 		A10000000000000000000014 /* TrainerSessionCues.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* TrainerSessionCues.swift */; };
 		A10000000000000000000013 /* pose_landmarker_full.task in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* pose_landmarker_full.task */; };
 		A10000000000000000000015 /* TrainerRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000008 /* TrainerRuntime */; };
+		A10000000000000000000016 /* TrainerPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = A7000000000000000000000A /* TrainerPersistence */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -75,6 +76,7 @@
 				A10000000000000000000008 /* SquatAnalysis in Frameworks */,
 				A1000000000000000000000D /* TrainerCore in Frameworks */,
 				A10000000000000000000015 /* TrainerRuntime in Frameworks */,
+				A10000000000000000000016 /* TrainerPersistence in Frameworks */,
 				399CEBCE10CD125E3DB8EEA9 /* Pods_TrainerApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -233,6 +235,7 @@
 				A70000000000000000000002 /* SquatAnalysis */,
 				A70000000000000000000006 /* TrainerCore */,
 				A70000000000000000000008 /* TrainerRuntime */,
+				A7000000000000000000000A /* TrainerPersistence */,
 			);
 			productName = TrainerApp;
 			productReference = A20000000000000000000006 /* TrainerApp.app */;
@@ -271,6 +274,7 @@
 				A70000000000000000000004 /* XCLocalSwiftPackageReference "SquatAnalysis" */,
 				A70000000000000000000005 /* XCLocalSwiftPackageReference "TrainerCore" */,
 				A70000000000000000000007 /* XCLocalSwiftPackageReference "TrainerRuntime" */,
+				A70000000000000000000009 /* XCLocalSwiftPackageReference "TrainerPersistence" */,
 			);
 			productRefGroup = A40000000000000000000004 /* Products */;
 			projectDirPath = "";
@@ -641,6 +645,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/TrainerRuntime;
 		};
+		A70000000000000000000009 /* XCLocalSwiftPackageReference "TrainerPersistence" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TrainerPersistence;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -663,6 +671,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A70000000000000000000007 /* XCLocalSwiftPackageReference "TrainerRuntime" */;
 			productName = TrainerRuntime;
+		};
+		A7000000000000000000000A /* TrainerPersistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70000000000000000000009 /* XCLocalSwiftPackageReference "TrainerPersistence" */;
+			productName = TrainerPersistence;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

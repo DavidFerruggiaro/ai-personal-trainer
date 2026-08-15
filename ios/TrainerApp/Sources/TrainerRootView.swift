@@ -1,8 +1,10 @@
 import Accessibility
 import PoseCore
 import SquatAnalysis
+import SwiftData
 import SwiftUI
 import TrainerCore
+import TrainerPersistence
 import TrainerRuntime
 
 private enum SessionFieldFocus: Hashable {
@@ -196,6 +198,7 @@ struct TrainerRootView: View {
 private struct BackSquatQuickSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.modelContext) private var modelContext
     @FocusState private var focusedField: SessionFieldFocus?
     @ScaledMetric(relativeTo: .largeTitle) private var countdownNumberSize = 72
     @ScaledMetric(relativeTo: .largeTitle) private var provisionalRepCountSize = 72
@@ -224,6 +227,10 @@ private struct BackSquatQuickSessionView: View {
     @StateObject private var setupController = TrainerSetupGateController()
     private let cues = TrainerSessionCues()
     private let exercise: ExerciseDefinition
+
+    private var persistenceStore: TrainerPersistenceStore {
+        TrainerPersistenceStore(modelContext: modelContext)
+    }
 
     private var isCapturingSet: Bool {
         activeCapture.phase == .recording
@@ -1216,36 +1223,37 @@ private struct BackSquatQuickSessionView: View {
         let correctedAt = Date()
 
         do {
+            var updatedSession = session
             if countedChanged, correctedCountedReps >= currentCountedReps {
-                try session.correctReviewedSetCountedReps(
+                try updatedSession.correctReviewedSetCountedReps(
                     completedSet.id,
                     to: correctedCountedReps,
                     at: correctedAt
                 )
             }
             if cleanChanged, let correctedCleanReps {
-                try session.correctReviewedSetCleanReps(
+                try updatedSession.correctReviewedSetCleanReps(
                     completedSet.id,
                     to: correctedCleanReps,
                     at: correctedAt
                 )
             }
             if countedChanged, correctedCountedReps < currentCountedReps {
-                try session.correctReviewedSetCountedReps(
+                try updatedSession.correctReviewedSetCountedReps(
                     completedSet.id,
                     to: correctedCountedReps,
                     at: correctedAt
                 )
             }
             if correctedLoad != completedSet.load {
-                try session.correctReviewedSetLoad(
+                try updatedSession.correctReviewedSetLoad(
                     completedSet.id,
                     to: correctedLoad,
                     at: correctedAt
                 )
             }
 
-            guard let correctedSet = session.completedSets.last,
+            guard let correctedSet = updatedSession.completedSets.last,
                   correctedSet.id == completedSet.id else {
                 setReviewEditError(
                     "The reviewed set could not be refreshed.",
@@ -1253,6 +1261,12 @@ private struct BackSquatQuickSessionView: View {
                 )
                 return
             }
+            let setResult = try SetResult(
+                session: updatedSession,
+                completedSet: correctedSet
+            )
+            try persistenceStore.upsert(setResult)
+            session = updatedSession
             reviewedSet = correctedSet
             syncLoadEntryFromCurrentSet()
             resetReviewEditor()
@@ -1271,7 +1285,7 @@ private struct BackSquatQuickSessionView: View {
             }
         } catch {
             setReviewEditError(
-                "This set is no longer available to edit.",
+                "These edits couldn’t be saved locally. Try again.",
                 focus: nil
             )
         }
@@ -1746,19 +1760,29 @@ private struct BackSquatQuickSessionView: View {
 
             let summary = TrainerSetAnalysisMapper.summary(
                 from: result,
-                provisionalCountedReps: provisionalCountedReps
+                provisionalCountedReps: provisionalCountedReps,
+                poseEngine: setupController.camera.engine
             )
 
             do {
-                let completedSet = try session.completeCurrentSet(analysis: summary)
-                try activeCapture.finishProcessing(
+                var updatedSession = session
+                var updatedCapture = activeCapture
+                let completedSet = try updatedSession.completeCurrentSet(analysis: summary)
+                try updatedCapture.finishProcessing(
                     finalizedCountedReps: summary.finalizedCountedReps
                 )
+                let setResult = try SetResult(
+                    session: updatedSession,
+                    completedSet: completedSet
+                )
+                try persistenceStore.upsert(setResult)
+                session = updatedSession
+                activeCapture = updatedCapture
                 reviewedSet = completedSet
                 processingError = nil
                 self.retainedPoseSequence = nil
             } catch {
-                processingError = "This capture couldn’t be converted into a review result."
+                processingError = "This set couldn’t be saved locally. Retry processing or discard the capture."
                 if activeCapture.phase == .processing {
                     try? activeCapture.failProcessing()
                 }
@@ -1858,6 +1882,19 @@ private struct BackSquatQuickSessionView: View {
         activeCapture.updateProvisionalCountedReps(
             setupController.activeSetPoseStatus.provisionalCountedReps
         )
+        let detectedRepCount = activeCapture.finalizedCountedReps
+            ?? activeCapture.provisionalCountedReps
+        if activeCapture.phase == .awaitingReview, detectedRepCount == 0 {
+            do {
+                try deleteReviewedSetFromPersistence()
+            } catch {
+                presentPersistenceFailure(
+                    "The saved set couldn’t be removed. Keep it for now and try discard again."
+                )
+                return
+            }
+        }
+
         do {
             try activeCapture.requestDiscard(
                 evidenceMayStillContainReps: activeCapture.phase == .processing
@@ -1867,17 +1904,45 @@ private struct BackSquatQuickSessionView: View {
                 finishDiscardedSet()
             }
         } catch {
-            assertionFailure("Discard should be available during capture, processing, failure, or review: \(error)")
+            assertionFailure("Discard should be available during capture, processing, failure, or review")
         }
     }
 
     private func confirmDiscardActiveSet() {
+        if activeCapture.phase == .awaitingReview {
+            do {
+                try deleteReviewedSetFromPersistence()
+            } catch {
+                presentPersistenceFailure(
+                    "The saved set couldn’t be removed. Keep it for now and try discard again."
+                )
+                return
+            }
+        }
+
         do {
             try activeCapture.confirmDiscard()
             finishDiscardedSet()
         } catch {
-            assertionFailure("Confirmed discard requires an outstanding confirmation: \(error)")
+            assertionFailure("Confirmed discard requires an outstanding confirmation")
         }
+    }
+
+    private func deleteReviewedSetFromPersistence() throws {
+        guard let reviewedSet else { return }
+        _ = try persistenceStore.deleteSetResult(id: reviewedSet.id)
+    }
+
+    private func presentPersistenceFailure(_ detail: String) {
+        let notice = SessionNoticePresentation(
+            title: "Local save unavailable",
+            detail: detail,
+            systemImage: "externaldrive.badge.exclamationmark"
+        )
+        sessionNotice = notice
+        AccessibilityNotification.Announcement(
+            "\(notice.title). \(notice.detail)"
+        ).post()
     }
 
     private func finishDiscardedSet() {
@@ -2059,7 +2124,7 @@ private struct BackSquatQuickSessionView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .frame(maxWidth: .infinity)
-            .accessibilityHint("Returns to Quick Start. This summary is not persisted yet.")
+            .accessibilityHint("Returns to Quick Start. Completed set records remain saved locally.")
         }
         .padding()
     }
@@ -2084,7 +2149,15 @@ private struct BackSquatQuickSessionView: View {
 
     private func endSession() {
         do {
-            let summary = try session.end()
+            let endedAt = Date()
+            var updatedSession = session
+            let summary = try updatedSession.end(at: endedAt)
+            try persistenceStore.markSessionEnded(
+                sessionID: updatedSession.id,
+                workoutID: updatedSession.id,
+                endedAt: endedAt
+            )
+            session = updatedSession
             armingEvaluationTask?.cancel()
             armingEvaluationTask = nil
             countdownTask?.cancel()
@@ -2103,7 +2176,9 @@ private struct BackSquatQuickSessionView: View {
                 endedSummary = summary
             }
         } catch {
-            assertionFailure("An active quick session should end once: \(error)")
+            presentPersistenceFailure(
+                "The workout couldn’t be finalized locally. Try ending it again."
+            )
         }
     }
 }

@@ -1,6 +1,6 @@
 # M2 Back Squat Vertical Slice Tasks
 
-Last updated: 2026-07-25
+Last updated: 2026-08-03
 
 ## Milestone Goal
 
@@ -8,7 +8,7 @@ Build the first user-facing native iOS workout loop for one exercise: side-view 
 
 Milestone 2 starts after Milestone 1 selects the pose engine. The goal is not a broad fitness app. The goal is to prove that a real lifter can complete repeated back squat sets in the gym with trustworthy tracking, post-set review, and local saved history.
 
-Current implementation is still in-memory only. Durable local history remains M2.13 and has not started.
+Completed set records now have a durable local SwiftData foundation. History UI, prior-load lookup, and physical restart acceptance remain open under M2.13.
 
 ## Dependency
 
@@ -51,9 +51,10 @@ or End Workout -> Workout Summary -> Done
 
 - M2.1-M2.4, M2.5a, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, M2.14a, and M2.V1 are done.
 - M2.6, M2.10, and parent M2.14 retain the timing, clean-evidence, or deferred physical gates documented in their result sections.
-- M2.13 persistence has not started; the M2.14a summary is transient and in memory only.
+- M2.13a's structured persistence foundation is implemented and automated verification passes. M2.13 remains `in_progress` until a physical save/terminate/relaunch check; the M2.14a summary presentation itself is still an in-memory projection and no history UI exists.
 - The 2026-08-03 physical pass is recorded in `docs/design_reviews/2026-08-03_m2_physical_acceptance.md`. Multi-set summary inspection is deliberately deferred until the next natural multi-set workout.
 - M2.5b reachable armed weak-setup recovery passes both full native verification and the focused solo physical-device flow, closing parent M2.5. M2.6 transition instrumentation isolated the approximately 9-second delay and a cleaned preview-identity candidate is installed; physical confirmation is deferred until a natural future set.
+- M2.10's v2 clean-rep label schema and offline-processing slice is done. Production gates remain `not_assessed`, user-facing clean conclusions remain unavailable, and M2.10 itself stays `in_progress` pending future labeled evidence and held-out gate validation.
 
 ## Tasks
 
@@ -751,6 +752,9 @@ Implementation progress (2026-07-11):
 - Remaining before `done`: required clean depth/lockout/tempo conclusions are still unimplemented and physically unchallenged, so M2.10 intentionally remains `in_progress` under its guardrail. Normal and overridden-setup review also need physical-device inspection.
 - Physical acceptance (2026-08-03): normal review was legible at standard text size and clearly showed `load × counted reps`, unavailable clean evidence, neutral rep markers, unavailable takeaway, and `Next Set`. A later focused M2.5b pass reached Start Anyway through the intended solo flow and verified the low-confidence review label. Required clean gates remain open, so M2.10 stays `in_progress`.
 - Offline clean-evidence audit (2026-08-03): added deterministic `scripts/audit_clean_rep_evidence.py` coverage/geometry reporting plus tests and replayed all three local MediaPipe pose exports. The verified barbell set has confident right-leg evidence throughout all seven labeled rep intervals, but its 2 FPS cadence misses the 150 ms timing target and its labels contain seven clean positives with zero depth, lockout, or tempo/control failures. Raw tracked-joint geometry also shows that naive hip-vs-knee and terminal-knee-angle thresholds would contradict or overinterpret verified-clean labels. The go/no-go is therefore **no-go for native/user-facing clean gates, go for a full-rate gate-labeled data tranche**. `not_assessed` / `Clean reps unavailable` remains the required production behavior. See `docs/bakeoff_results/2026-08-03_clean_rep_evidence/README.md`.
+- V2 labeling/tooling result (2026-08-03): `done`. Added a machine-readable v2 schema/template; exact source-frame start/bottom/end events and standing-reference windows; independent depth/lockout/tempo-control pass/fail/unknown labels; confidence, sufficiency, provenance, capture notes, and source SHA-256; a conservative v1 adapter; strict source/label/pose validation; standing-window-aware report-schema-v2 audit output; synthetic v1/v2 and 10 FPS fixtures; and an exact gym runbook. New `PoseRunExport` source metadata hashes the imported video by streaming file chunks and old exports still decode. No production threshold, persistence, or user-facing clean conclusion was added.
+- Existing-video replay (2026-08-03): processed `gym_w_barbell.mov` locally at 10 FPS with explicit diagnostic provenance, created a separate frame-accurate v2 AI-assisted prelabel, and validated source SHA/cadence/events/standing windows end to end. All seven reps have usable right-side audit evidence, but `human_verified: false` and zero failure examples keep the result outside the human threshold-selection floor. A rotation-metadata bug in the runbook frame-index command was corrected. M2.10 remains `in_progress`; production clean evidence stays unavailable.
+- V2 verification: 21 deterministic Python tests pass, including byte-identical report output, content-hash pairing across Photos temporary filenames, and explicit unverified AI-assisted provenance. Full native verification passes `PoseCore` (2 XCTest + 3 Swift Testing tests), `SquatAnalysis` (10), `TrainerCore` (56), `TrainerRuntime` (19), and both host-architecture workspace Simulator app builds. The first sandboxed full run passed all packages but could not access CoreSimulator; the approved out-of-sandbox rerun completed both builds.
 
 ### M2.11 Add Essential Post-Set Editing
 
@@ -865,7 +869,7 @@ Implementation progress (2026-07-11):
 
 ### M2.13 Add Local Persistence
 
-Status: pending
+Status: in_progress
 
 Goal:
 
@@ -902,6 +906,20 @@ Files likely touched:
 Documentation updates:
 
 - Record persistence model details.
+
+Implementation progress (2026-08-03):
+
+- Began the bounded M2.13a structured-data foundation with a local-data security and lifecycle review at `docs/design_reviews/2026-08-03_m2_13_local_persistence_security.md`.
+- Scope remains local SwiftData records and artifact identifiers only. No history UI, video retention, cloud/backend/account work, clean thresholds, or new workout/exercise surface is included.
+- Added Foundation-only `TrainerCore.SetResult` as the canonical structured record. It preserves stable set/workout/session IDs, timestamps, exercise, original/corrected load, provisional/analyzer-final/current counts, analyzer/user/unavailable/missing clean provenance, explicit unavailable form evidence, setup override evidence, ordered corrections, per-rep summaries, frame totals, engine/analyzer metadata, and optional opaque artifact IDs.
+- Added the isolated, local-only `TrainerPersistence` Swift package with versioned SwiftData workout/session/set/rep/setup/correction/metadata records and an explicit migration plan. Models contain no binary video/image property and no per-frame pose stream.
+- Successful full-sequence processing now stages the domain result, upserts it by stable set ID in one SwiftData transaction, and only then opens review. A failed local save leaves processing retryable and does not publish a completed in-memory set.
+- Review edits stage a copied `QuickSession`, replace the same persisted set and child evidence in one save, then publish the corrected state. Repeated saves remain idempotent.
+- Review discard deletes the persisted set and child evidence before rolling back the in-memory reviewed set. Empty session/workout parents are removed. Active, failed-processing, and discarded partial captures cannot construct a persistence-ready `SetResult` and are never saved.
+- Ending a session marks existing structured session/workout parents ended. The ended-session summary remains the existing transient UI projection; no history surface was added.
+- Ten deterministic `TrainerPersistence` tests pass with isolated containers: required-field round trip, unavailable vs missing clean evidence, user-correction provenance, idempotent correction replacement, discard cleanup, absence of heavy payload fields, malformed/partial fail-closed behavior, repeated schema initialization, and file-backed reopen from a new container.
+- The new-container reopen test is an automated lifecycle seam only. M2.13 remains `in_progress` pending a physical save → terminate → relaunch → inspect-store check on iPhone; correction durability and review-discard durability should be included in that pass.
+- Final automated verification passes: focused `TrainerPersistence` (10), all four pre-existing suites (`PoseCore` 2 XCTest + 3 Swift Testing, `SquatAnalysis` 10, `TrainerCore` 56, `TrainerRuntime` 19), both host-architecture workspace Simulator app builds, all 21 Python evidence-tooling tests, and `git diff --check`. The first sandboxed harness attempt was blocked by nested `sandbox-exec`; the approved out-of-sandbox run passed and cleaned its scratch directory.
 
 ### M2.14 Add Session Summary
 

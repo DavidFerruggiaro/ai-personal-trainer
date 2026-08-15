@@ -11,11 +11,12 @@ Runs deterministic native iOS verification from the repository root:
   2. SquatAnalysis package tests
   3. TrainerCore package tests
   4. TrainerRuntime package tests
-  5. TrainerApp host-architecture Simulator workspace build
-  6. PoseBakeoff host-architecture Simulator workspace build
+  5. TrainerPersistence package tests
+  6. TrainerApp host-architecture Simulator workspace build
+  7. PoseBakeoff host-architecture Simulator workspace build
 
 Options:
-  --packages-only       Run only the four Swift package suites.
+  --packages-only       Run only the five Swift package suites.
   --trainer-app-only    Run the package suites and TrainerApp build only.
   --keep-build-artifacts
                         Keep isolated test/build artifacts and print their location.
@@ -170,6 +171,7 @@ package_names=(
     "SquatAnalysis"
     "TrainerCore"
     "TrainerRuntime"
+    "TrainerPersistence"
 )
 
 echo "Native iOS verification"
@@ -198,7 +200,7 @@ for package_name in "${package_names[@]}"; do
 done
 
 if [[ "$mode" == "packages" ]]; then
-    finish_successfully "PASS: all four Swift package suites completed."
+    finish_successfully "PASS: all five Swift package suites completed."
     exit 0
 fi
 

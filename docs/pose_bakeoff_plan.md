@@ -1,6 +1,6 @@
 # Pose Bakeoff Plan
 
-Last updated: 2026-07-11
+Last updated: 2026-08-03
 
 ## Purpose
 
@@ -77,20 +77,21 @@ Label per clip:
 - Capture conditions.
 - Whether confidence should be low.
 
-Label per rep:
+New formal back-squat labels use schema v2:
 
-- `start_s`.
-- `bottom_s`.
-- `end_s`.
-- `counted`.
-- `clean`.
-- Failures: `depth`, `lockout`, `knee_tracking`, `torso_angle`, `tempo_control`.
+- `start`, `bottom`, and `end` carry both a zero-based original-source frame index and a source presentation timestamp.
+- A stable standing-reference window sits outside the rep motion interval.
+- `depth`, `lockout`, and `tempo_control` are each `pass`, `fail`, or `unknown`; no global clean flag substitutes for independent judgments.
+- Label confidence, evidence sufficiency, capture notes, source SHA-256, and annotation provenance are explicit.
+- Tempo/control criteria are written at clip level before labeling and distinguish visible loss of control from phase duration alone.
+
+The machine-readable contract and template live under `docs/bakeoff_labels/`. Existing schema-v1 labels remain readable through a conservative adapter: explicit named failures stay failures, but every unmentioned gate is unknown even when the legacy global `clean` value is true.
 
 Do not build a custom annotation UI in milestone 1. Start with plain version-controlled JSON or YAML labels beside the test clips. If labeling becomes painful after about 30 clips, revisit tooling.
 
 Current label files live under `docs/bakeoff_labels/` because the source videos are intentionally gitignored. Each label still names the local source video path.
 
-Example label:
+Historical schema-v1 example:
 
 ```json
 {
@@ -116,6 +117,8 @@ Example label:
   ]
 }
 ```
+
+Use `docs/bakeoff_labels/squat_v2_template.labels.json` for new clips; do not copy the historical flat shape. Validate labels, the original source hash, and the paired pose export with `scripts/validate_squat_labels.py` before running the observability audit.
 
 First-pass scoring command shape:
 
@@ -209,6 +212,7 @@ Example:
   },
   "source_video": {
     "filename": "squat_side_001.mov",
+    "sha256": "optional-content-hash-for-label-provenance",
     "duration_s": 12.4,
     "resolution": {
       "width": 1920,
@@ -254,6 +258,10 @@ Use app-owned landmark names in exports:
 - `right_foot_index`
 
 Engine-native details belong only in optional debug metadata.
+
+New prerecorded exports include optional `source_video.sha256` so v2 labels can verify content identity even when Photos supplies a temporary local filename. The field is backwards-compatible; historical exports without it remain valid.
+
+The original `gym_w_barbell.mov` has also been replayed through a local 10 FPS diagnostic and frame-accurate v2 prelabel. Its source identity, cadence, events, and standing windows validate end to end, but the annotation is AI-assisted (`human_verified: false`), positive-only, and not a substitute for the app-owned iPhone export or independently human-labeled failure classes.
 
 ## Implementation Direction
 

@@ -46,6 +46,7 @@ public struct SetAnalysisSummary: Equatable, Sendable {
     public let reps: [SetRepSummary]
     public let framesObserved: Int
     public let framesAnalyzed: Int
+    public let modelMetadata: SetResultModelMetadata
 
     public init(
         provisionalCountedReps: Int,
@@ -53,7 +54,8 @@ public struct SetAnalysisSummary: Equatable, Sendable {
         cleanResult: SetCleanResult,
         reps: [SetRepSummary],
         framesObserved: Int,
-        framesAnalyzed: Int
+        framesAnalyzed: Int,
+        modelMetadata: SetResultModelMetadata = .unavailable
     ) {
         precondition(provisionalCountedReps >= 0, "Provisional rep count cannot be negative")
         precondition(finalizedCountedReps >= 0, "Finalized rep count cannot be negative")
@@ -65,5 +67,6 @@ public struct SetAnalysisSummary: Equatable, Sendable {
         self.reps = reps
         self.framesObserved = framesObserved
         self.framesAnalyzed = framesAnalyzed
+        self.modelMetadata = modelMetadata
     }
 }

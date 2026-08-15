@@ -1,6 +1,6 @@
 # Native Rebuild Product Spec
 
-Last updated: 2026-07-12
+Last updated: 2026-08-03
 
 ## Product Vision
 
@@ -34,7 +34,7 @@ Included:
 - Local workout/session history.
 - Local video retention by default, with user controls.
 
-These are v1 target capabilities, not a claim that every item is implemented. As of M2.14a, live counting/finalization/review/corrections and a concise workout-end summary exist in memory, and active-set pose delivery no longer depends on SwiftUI update timing; real-time coaching, durable history, and video retention have not started.
+These are v1 target capabilities, not a claim that every item is implemented. As of M2.13a, live counting/finalization/review/corrections exist, completed set records have a durable local SwiftData foundation, and the concise workout-end summary remains an in-memory projection. Active-set pose delivery no longer depends on SwiftUI update timing; real-time coaching, history UI/prior-load lookup, and video retention have not started.
 
 Deferred:
 
@@ -145,6 +145,10 @@ Practical v1 side-view split:
 - Limited/deferred from side view: knee tracking.
 - Later/non-blocking: foot stability, bar path.
 
+Clean-gate evidence collection now uses a separate schema-v2 human-label contract. Depth, lockout, and tempo/control are judged independently as pass/fail/unknown; labels include exact source-frame events, a stable standing-reference window, confidence, evidence sufficiency, provenance, capture notes, and source-video SHA-256. Historical schema-v1 labels remain readable, but an unmentioned gate is always unknown and a legacy global `clean` flag never proves an independent gate passed.
+
+This tooling is not a product clean-rep implementation. The completed 2026-08-03 evidence audit remains a no-go for production thresholds, and user-facing clean conclusions stay unavailable until both gate classes and a held-out validation session support a later candidate.
+
 ## Post-Set Review
 
 The post-set review should answer: what happened, and what should I do next set?
@@ -197,7 +201,7 @@ Current implementation (M2.14a):
 - Ending a nonempty quick session creates an immutable in-memory summary and replaces the workout screen until the user taps `Done`.
 - Ordered set rows use corrected load, counted reps, and provenance-aware clean evidence. Discarded sets and the unfinished draft are excluded.
 - The summary shows counted-rep total only when every set has count evidence and separately reports setup overrides as low-confidence captures.
-- Per-set lb/kg values remain separate. No cross-unit volume, persistence, history, charts, issue inference, or programming recommendation is present.
+- Per-set lb/kg values remain separate. Completed `SetResult` records now persist locally, but this summary still projects the active in-memory session and there is no history UI, cross-unit volume, charts, issue inference, or programming recommendation.
 - Recurring form trends remain explicitly unavailable rather than being inferred from missing clean-gate evidence.
 
 ## Corrections And Discard
@@ -264,6 +268,15 @@ V1 persistence uses a hybrid local model:
 - Structured records store file references/asset IDs, never full videos or per-frame pose streams.
 - `TrainerCore` remains Foundation-only; SwiftData belongs in an app or dedicated persistence layer.
 
+Current implementation (M2.13a):
+
+- `TrainerCore.SetResult` is the Foundation-only canonical structured record. It keeps original analyzer/load evidence separate from corrected values and models analyzer-assessed, user-corrected, unavailable, and missing clean evidence without converting unavailable to zero.
+- The isolated `TrainerPersistence` package owns schema-v1 SwiftData models, migration planning, validation, idempotent upsert, transactional correction replacement, and discard deletion. It is configured local-only with no CloudKit database.
+- V1 quick sessions currently use the same stable UUID as both workout and session identity. The schema stores both fields so a later workout/session split does not require changing set identity.
+- Structured records contain small per-rep summaries and optional opaque artifact IDs only. No video/image bytes or per-frame pose streams are stored, and this slice implements no artifact retention lifecycle.
+- `TrainerApp` persists only at successful full-sequence auto-save, updates on applied review corrections, and deletes on confirmed review discard. Persistence failure keeps the domain operation unpublished/retryable.
+- Automated file-backed reopen from a new container passes, but physical save/terminate/relaunch acceptance remains open and M2.13 stays `in_progress`.
+
 ## Architecture Direction
 
 High-level pipeline:
@@ -319,6 +332,7 @@ ios/
     SquatAnalysis/   # production rep counting plus bakeoff scoring
     TrainerCore/     # Foundation-only app/session/review domain
     TrainerRuntime/  # pose/analysis/domain runtime composition for TrainerApp
+    TrainerPersistence/ # versioned local SwiftData boundary for structured records
   SquatTrainer.xcworkspace
 ```
 
@@ -358,7 +372,9 @@ Current boundary (2026-08-03):
 - M2.1-M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and the bounded M2.14a in-memory summary slice are done.
 - M2.5b's solo-reachable post-arm weak-setup recovery passes both full automated verification and a focused physical Retry/Start Anyway flow through low-confidence review.
 - M2.6 remains open for countdown choices/failure behavior and physical confirmation of the installed stable-preview candidate for the measured transition delay. Instrumentation found correct five-second countdown/domain timing but a 9.04-second gap to the first active pose observation. M2.10 remains open for real clean gates; its normal and low-confidence review presentation pass physically, but the 2026-08-03 offline audit found the local barbell labels positive-only and the export too coarse for production threshold selection. Parent M2.14 remains open for its deferred natural multi-set summary pass.
-- M2.13 persistence has not started. The M2.14a summary remains transient and disappears after leaving the ended session.
+- M2.13a's durable structured-record foundation is implemented and automated reopen coverage passes. M2.13 remains `in_progress` for a physical save/terminate/relaunch acceptance pass; no history UI or artifact retention was added, and the M2.14a summary screen remains a transient projection.
+- The M2.10 evidence workflow now has a strict v2 label schema, conservative v1 adapter, full-rate-ready pose-export validation/audit path, source-content hashing, synthetic fixtures, and a 10 FPS gym import runbook. It deliberately leaves native clean gates `not_assessed` and review copy at `Clean reps unavailable`.
+- The existing barbell video now proves that workflow locally at 10 FPS and has a separate frame-accurate AI-assisted v2 prelabel. Because the prelabel is not independently human-verified and the clip has no gate failures, it does not change the product no-go or count toward threshold validation.
 - The consolidated checkpoint built, installed, and passed physical Stop/review/edit/discard behavior on the connected iPhone on 2026-08-03. A signed M2.5b replacement then passed the focused solo recovery and low-confidence review flow on the same device; the full offline harness passes with TrainerCore at 56 tests.
 
 ## Open Questions

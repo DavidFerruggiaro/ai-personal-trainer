@@ -1,6 +1,6 @@
 # Native Rebuild Product Spec
 
-Last updated: 2026-08-03
+Last updated: 2026-08-14
 
 ## Product Vision
 
@@ -290,7 +290,7 @@ Responsibilities:
 - `PoseEstimator`: estimates normalized pose from video/camera frames.
 - `PoseStream`: app-owned sequence of normalized pose frames.
 - `SquatAnalyzer`: owns rep counting, clean-rep scoring, cue decisions, and set summaries.
-- `TrainerRuntime`: composes pose/setup/analysis runtime behavior, including optional setup evidence and bounded active-set pose ingestion, without adding pose dependencies to `TrainerCore`.
+- `TrainerRuntime`: composes pose/setup/analysis runtime behavior, including optional setup evidence, bounded active-set pose ingestion, and the deterministic active-set delivery coordinator, without adding pose dependencies to `TrainerCore`.
 - `TrainerCore`: Foundation-only session, setup, capture-lifecycle, finalized-summary, correction, and review-discard domain state.
 - UI: displays state and collects user input; does not own analysis logic.
 
@@ -344,7 +344,7 @@ MediaPipe Pose Landmarker is the selected implementation direction for the back-
 
 The selection is based on stronger prerecorded lower-body continuity and the first labeled offline score from a native MediaPipe pose export. M1.11 subsequently passed portrait physical-device live viability on separate standing and side-view bodyweight-squat artifacts. This does not certify clean-rep gates or production tracking accuracy. See `docs/bakeoff_results/2026-07-09_engine_selection.md` and `docs/bakeoff_results/2026-05-25_live_camera_viability/README.md`.
 
-Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estimation uses `PoseEstimator`; production live capture uses the shared `LivePoseStreaming` / `LivePoseEvent` boundary in `PoseCore`. `TrainerLivePoseCamera` implements that boundary and reuses the portrait orientation contract proven by `PoseBakeoff`. `TrainerRuntime` consumes ordered observations directly for setup, preview, and bounded active-set analysis; SwiftUI observes published display state but is not a pose-delivery mechanism.
+Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estimation uses `PoseEstimator`; production live capture uses the shared `LivePoseStreaming` / `LivePoseEvent` boundary and `LivePoseEventChannel` in `PoseCore`. `TrainerLivePoseCamera` implements that boundary and reuses the portrait orientation contract proven by `PoseBakeoff`. `TrainerRuntime.TrainerActiveSetDeliveryCoordinator` owns the active-set start snapshot, queued Stop boundary, fail-closed delivery-loss handling, and continuation lifecycle. SwiftUI observes published display state but is not a pose-delivery mechanism.
 
 ## Milestones
 
@@ -366,16 +366,17 @@ Keep engine-native MediaPipe types behind app-owned adapters. Prerecorded estima
 6. Training Intelligence Foundation
    Trends, quality history, better defaults, lightweight next-set suggestions, and groundwork for future programming recommendations.
 
-Current boundary (2026-08-03):
+Current boundary (2026-08-14):
 
 - M1 is complete enough to support M2: MediaPipe is selected and portrait live viability passed.
-- M2.1-M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and the bounded M2.14a in-memory summary slice are done.
+- M2.1-M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, the bounded M2.14a in-memory summary slice, M2.V1, and M2.V2 are done.
 - M2.5b's solo-reachable post-arm weak-setup recovery passes both full automated verification and a focused physical Retry/Start Anyway flow through low-confidence review.
 - M2.6 remains open for countdown choices/failure behavior and physical confirmation of the installed stable-preview candidate for the measured transition delay. Instrumentation found correct five-second countdown/domain timing but a 9.04-second gap to the first active pose observation. M2.10 remains open for real clean gates; its normal and low-confidence review presentation pass physically, but the 2026-08-03 offline audit found the local barbell labels positive-only and the export too coarse for production threshold selection. Parent M2.14 remains open for its deferred natural multi-set summary pass.
 - M2.13a's durable structured-record foundation is implemented and automated reopen coverage passes. M2.13 remains `in_progress` for a physical save/terminate/relaunch acceptance pass; no history UI or artifact retention was added, and the M2.14a summary screen remains a transient projection.
+- M2.V2 extracts the generic bounded live-event channel into `PoseCore` and the trainer-specific active-set delivery coordinator into `TrainerRuntime`. Host tests cover queued Stop ordering, held-boundary drop/shutdown/cancel completion, fail-closed overflow, failure provenance, and consecutive-set isolation; app/controller wiring remains compile-verified rather than physically exercised.
 - The M2.10 evidence workflow now has a strict v2 label schema, conservative v1 adapter, full-rate-ready pose-export validation/audit path, source-content hashing, synthetic fixtures, and a 10 FPS gym import runbook. It deliberately leaves native clean gates `not_assessed` and review copy at `Clean reps unavailable`.
 - The existing barbell video now proves that workflow locally at 10 FPS and has a separate frame-accurate AI-assisted v2 prelabel. Because the prelabel is not independently human-verified and the clip has no gate failures, it does not change the product no-go or count toward threshold validation.
-- The consolidated checkpoint built, installed, and passed physical Stop/review/edit/discard behavior on the connected iPhone on 2026-08-03. A signed M2.5b replacement then passed the focused solo recovery and low-confidence review flow on the same device; the full offline harness passes with TrainerCore at 56 tests.
+- The consolidated checkpoint built, installed, and passed physical Stop/review/edit/discard behavior on the connected iPhone on 2026-08-03. A signed M2.5b replacement then passed the focused solo recovery and low-confidence review flow on the same device. The integrated offline harness passes with PoseCore at 2 XCTest + 7 Swift Testing tests, SquatAnalysis at 10, TrainerCore at 56, TrainerRuntime at 30, TrainerPersistence at 10, and both workspace Simulator builds.
 
 ## Open Questions
 

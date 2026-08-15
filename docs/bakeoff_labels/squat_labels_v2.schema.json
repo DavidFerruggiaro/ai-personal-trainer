@@ -1,0 +1,359 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-personal-trainer.local/schemas/squat_labels_v2.schema.json",
+  "title": "Side-view back-squat clean-rep labels v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "clip_id",
+    "source_video",
+    "exercise",
+    "camera_angle",
+    "capture",
+    "label_provenance",
+    "tempo_control_definition",
+    "reps"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2
+    },
+    "clip_id": {
+      "$ref": "#/$defs/nonempty_string"
+    },
+    "source_video": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filename",
+        "sha256"
+      ],
+      "properties": {
+        "filename": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "duration_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "nominal_fps": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "frame_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "exercise": {
+      "const": "back_squat"
+    },
+    "camera_angle": {
+      "const": "side"
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conditions",
+        "confidence_should_be_low",
+        "notes"
+      ],
+      "properties": {
+        "conditions": {
+          "$ref": "#/$defs/string_array"
+        },
+        "confidence_should_be_low": {
+          "type": "boolean"
+        },
+        "notes": {
+          "$ref": "#/$defs/string_array"
+        }
+      }
+    },
+    "label_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "annotation_id",
+        "annotator_id",
+        "annotated_at",
+        "method",
+        "tool",
+        "notes"
+      ],
+      "properties": {
+        "annotation_id": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "annotator_id": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "annotated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "method": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "tool": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "notes": {
+          "$ref": "#/$defs/string_array"
+        },
+        "human_verified": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "tempo_control_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "description",
+        "pass_criteria",
+        "fail_criteria",
+        "unknown_criteria"
+      ],
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "description": {
+          "$ref": "#/$defs/nonempty_string"
+        },
+        "pass_criteria": {
+          "$ref": "#/$defs/nonempty_string_array"
+        },
+        "fail_criteria": {
+          "$ref": "#/$defs/nonempty_string_array"
+        },
+        "unknown_criteria": {
+          "$ref": "#/$defs/nonempty_string_array"
+        }
+      }
+    },
+    "reps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rep"
+      }
+    }
+  },
+  "$defs": {
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "string_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonempty_string"
+      }
+    },
+    "nonempty_string_array": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/nonempty_string"
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_frame_index",
+        "timestamp_s"
+      ],
+      "properties": {
+        "source_frame_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timestamp_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "label_confidence",
+        "evidence_sufficiency",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown"
+          ]
+        },
+        "label_confidence": {
+          "$ref": "#/$defs/label_confidence"
+        },
+        "evidence_sufficiency": {
+          "$ref": "#/$defs/evidence_sufficiency"
+        },
+        "notes": {
+          "$ref": "#/$defs/string_array"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "pass",
+                  "fail"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_sufficiency": {
+                "const": "sufficient"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_sufficiency": {
+                "const": "insufficient"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "label_confidence": {
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "evidence_sufficiency": {
+      "enum": [
+        "sufficient",
+        "insufficient"
+      ]
+    },
+    "rep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "counted",
+        "events",
+        "standing_reference_window",
+        "gates",
+        "label_confidence",
+        "evidence_sufficiency",
+        "capture_notes"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "counted": {
+          "type": "boolean"
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "bottom",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/event"
+            },
+            "bottom": {
+              "$ref": "#/$defs/event"
+            },
+            "end": {
+              "$ref": "#/$defs/event"
+            }
+          }
+        },
+        "standing_reference_window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/event"
+            },
+            "end": {
+              "$ref": "#/$defs/event"
+            }
+          }
+        },
+        "gates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "depth",
+            "lockout",
+            "tempo_control"
+          ],
+          "properties": {
+            "depth": {
+              "$ref": "#/$defs/gate"
+            },
+            "lockout": {
+              "$ref": "#/$defs/gate"
+            },
+            "tempo_control": {
+              "$ref": "#/$defs/gate"
+            }
+          }
+        },
+        "label_confidence": {
+          "$ref": "#/$defs/label_confidence"
+        },
+        "evidence_sufficiency": {
+          "$ref": "#/$defs/evidence_sufficiency"
+        },
+        "capture_notes": {
+          "$ref": "#/$defs/string_array"
+        }
+      }
+    }
+  }
+}

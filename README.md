@@ -1,8 +1,13 @@
 # AI Personal Trainer - Squat MVP
 
-Upload a squat video and get per-rep form feedback powered by pose detection and a biomechanical rep-counter. Built as the first exercise in a larger AI personal-trainer roadmap; see `PLAN.md` in the parent workspace for staging toward a native real-time prototype.
+This repo contains two implementations:
 
-## Features
+- The original Python/Streamlit batch squat analyzer, preserved as a reference prototype.
+- The active native iOS rebuild under `ios/`, focused on trustworthy live side-view barbell back-squat tracking.
+
+Start native work with `AGENTS.md` and `docs/native_rebuild_agent_handoff.md`. Native build instructions live in `ios/README.md`.
+
+## Python Prototype Features
 
 - **Rep Counting**: State-machine rep detection with pose-validity, motion, and cooldown gates to suppress false positives.
 - **Per-Rep Form Feedback**: After each completed rep, one concise cue covering:
@@ -59,7 +64,7 @@ python main.py
 
 The app will open in your browser at `http://localhost:8501`. Upload an `.mp4`, `.mov`, `.avi`, or `.mkv` file, then click **Analyze Video**. The app processes the video frame-by-frame, counts reps, checks form, and shows a session summary when the clip ends.
 
-> This is a batch analyzer today — it processes an uploaded clip, not a live camera feed. Live on-device analysis is the next phase; see the roadmap section below.
+> The Python app is intentionally still a batch analyzer. The separate native `TrainerApp` now has live MediaPipe camera capture, setup gating, provisional rep counting, full-sequence finalization, review, corrections, and discard behavior.
 
 ### Recording Tips
 
@@ -88,18 +93,22 @@ squat_mvp/
 │   ├── streamlit_app.py   # Main application
 │   ├── overlay_renderer.py # Visual overlays
 │   └── camera_guidance.py # Setup instructions
-└── utils/                 # Utilities
-    ├── math_utils.py      # Geometry functions
-    └── session_logger.py  # Session tracking
+├── utils/                 # Python utilities
+│   ├── math_utils.py      # Geometry functions
+│   └── session_logger.py  # Session tracking
+├── ios/                   # Native iOS rebuild and shared Swift packages
+└── docs/                  # Product, architecture, evidence, tasks, and handoff
 ```
 
-### Mobile-Ready Design
+### Native Rebuild Direction
 
-All core modules (`/core`) are platform-agnostic with no UI dependencies. This enables:
+The Python `core/` modules remain useful reference logic, but they are not a literal Swift specification. The locked native direction is:
 
-- Future migration to React Native with native camera modules
-- ONNX export for on-device inference
-- Clean separation of concerns
+- Native SwiftUI iOS first.
+- MediaPipe Pose Landmarker behind app-owned pose abstractions.
+- Foundation-only `TrainerCore` for session/review behavior.
+- `SquatAnalysis` for production counted-rep and future clean-gate analysis.
+- Local-first hybrid persistence later: SwiftData for structured records and files for heavy artifacts.
 
 ## Configuration
 
@@ -149,12 +158,26 @@ Adjustable settings in the sidebar:
 
 ### Testing
 
-No automated test suite yet. Manual verification is done by running the three sample videos (`front_view_60fps.mp4`, `side_view_60fps.mp4`, `squats_v2.mp4`) through the app and spot-checking rep counts and form feedback against visual inspection.
+The Python prototype still relies mainly on manual sample-video verification.
+
+The native rebuild has automated Swift package suites:
+
+```bash
+swift test --package-path ios/Packages/PoseCore
+swift test --package-path ios/Packages/SquatAnalysis
+swift test --package-path ios/Packages/TrainerCore
+```
+
+Always build native apps through `ios/SquatTrainer.xcworkspace`; `TrainerCore` has 45 passing tests through M2.11.
 
 ### Roadmap
 
-- Phase 2: On-device real-time prototype (iOS + Apple Vision, or web + MediaPipe JS) — live camera preview with the current rep-counter logic ported over.
-- Phase 3: Additional exercises (bench, deadlift, pushup) once the real-time pipeline is stable.
+- Current milestone: native Back Squat vertical slice.
+- MediaPipe is selected; portrait live feasibility and one eight-rep provisional-count run passed.
+- M2.11 in-memory post-set corrections are complete and Simulator-build verified.
+- Several Stop/review/discard and setup/countdown tickets retain physical-device gates.
+- Persistence, history, video retention, clean-gate scoring, coaching, and exercise expansion remain later scoped work.
+- See `docs/design_reviews/2026-07-11_post_m2_11_roadmap_review.md` for ranked offline code-only next steps.
 
 ## License
 
@@ -166,4 +189,3 @@ MIT License
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
-

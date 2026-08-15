@@ -1,0 +1,13 @@
+platform :ios, '17.0'
+
+project 'SquatTrainer.xcodeproj'
+
+target 'PoseBakeoff' do
+  use_frameworks!
+  pod 'MediaPipeTasksVision'
+end
+
+target 'TrainerApp' do
+  use_frameworks!
+  pod 'MediaPipeTasksVision'
+end

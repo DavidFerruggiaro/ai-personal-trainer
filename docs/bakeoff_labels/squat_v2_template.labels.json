@@ -1,0 +1,105 @@
+{
+  "$schema": "squat_labels_v2.schema.json",
+  "schema_version": 2,
+  "clip_id": "replace_with_stable_clip_id",
+  "source_video": {
+    "filename": "replace_with_video_filename.mov",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "duration_s": 3.0,
+    "nominal_fps": 30.0,
+    "frame_count": 91
+  },
+  "exercise": "back_squat",
+  "camera_angle": "side",
+  "capture": {
+    "conditions": [
+      "commercial_gym",
+      "side_view"
+    ],
+    "confidence_should_be_low": false,
+    "notes": [
+      "Replace this template note with framing, lighting, occlusion, clothing, load, and safety context."
+    ]
+  },
+  "label_provenance": {
+    "annotation_id": "replace_with_unique_annotation_id",
+    "annotator_id": "replace_with_annotator_id",
+    "annotated_at": "2026-08-03T12:00:00Z",
+    "method": "frame_by_frame_video_review",
+    "tool": "replace_with_player_or_annotation_tool",
+    "notes": [],
+    "human_verified": true
+  },
+  "tempo_control_definition": {
+    "version": "manual_v1",
+    "description": "Judge visible control independently from phase duration; a fast rep is not automatically a failure.",
+    "pass_criteria": [
+      "Descent and ascent remain visibly intentional without a judged loss of control."
+    ],
+    "fail_criteria": [
+      "A visible collapse, uncontrolled bounce, or uncontrolled direction change occurs."
+    ],
+    "unknown_criteria": [
+      "Occlusion, framing, playback quality, or missing frames prevent a reliable judgment."
+    ]
+  },
+  "reps": [
+    {
+      "index": 1,
+      "counted": true,
+      "events": {
+        "start": {
+          "source_frame_index": 30,
+          "timestamp_s": 1.0
+        },
+        "bottom": {
+          "source_frame_index": 45,
+          "timestamp_s": 1.5
+        },
+        "end": {
+          "source_frame_index": 60,
+          "timestamp_s": 2.0
+        }
+      },
+      "standing_reference_window": {
+        "start": {
+          "source_frame_index": 15,
+          "timestamp_s": 0.5
+        },
+        "end": {
+          "source_frame_index": 29,
+          "timestamp_s": 0.966667
+        }
+      },
+      "gates": {
+        "depth": {
+          "status": "unknown",
+          "label_confidence": "high",
+          "evidence_sufficiency": "insufficient",
+          "notes": [
+            "Replace with the human judgment and evidence note."
+          ]
+        },
+        "lockout": {
+          "status": "unknown",
+          "label_confidence": "high",
+          "evidence_sufficiency": "insufficient",
+          "notes": [
+            "Replace with the human judgment relative to the standing-reference window."
+          ]
+        },
+        "tempo_control": {
+          "status": "unknown",
+          "label_confidence": "high",
+          "evidence_sufficiency": "insufficient",
+          "notes": [
+            "Replace with the human judgment under tempo_control_definition."
+          ]
+        }
+      },
+      "label_confidence": "low",
+      "evidence_sufficiency": "insufficient",
+      "capture_notes": []
+    }
+  ]
+}

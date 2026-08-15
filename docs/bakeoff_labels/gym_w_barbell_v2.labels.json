@@ -1,0 +1,309 @@
+{
+  "$schema": "squat_labels_v2.schema.json",
+  "schema_version": 2,
+  "clip_id": "gym_w_barbell_v2",
+  "source_video": {
+    "filename": "gym_w_barbell.mov",
+    "sha256": "85e2937b59778ff162089858b808d3a33c6a9ebb245868b1eda0bac82ef786a5",
+    "duration_s": 78.741667,
+    "nominal_fps": 29.984125304265003,
+    "frame_count": 2361
+  },
+  "exercise": "back_squat",
+  "camera_angle": "side",
+  "capture": {
+    "conditions": [
+      "commercial_gym",
+      "side_view",
+      "barbell_partially_occludes_upper_body",
+      "positive_examples_only"
+    ],
+    "confidence_should_be_low": false,
+    "notes": [
+      "The source is an unedited iPhone video with rotation metadata; frame indexes refer to decoded display-order source frames.",
+      "The near-side hip crease, knee, ankle, and foot remain visible during the seven-rep working set despite plate occlusion of the head and upper torso.",
+      "This clip contains judged pass examples only and cannot establish gate thresholds or failure sensitivity."
+    ]
+  },
+  "label_provenance": {
+    "annotation_id": "gym_w_barbell_v2_codex_review_2026-08-03",
+    "annotator_id": "codex_visual_reviewer",
+    "annotated_at": "2026-08-04T01:30:00Z",
+    "method": "independent_frame_by_frame_video_review",
+    "tool": "ffmpeg source-frame sheets with ffprobe timestamp index",
+    "human_verified": false,
+    "notes": [
+      "Gate judgments were made independently from the source frames; the legacy global clean field was not adapted into gate passes.",
+      "The 10 FPS diagnostic pose export was used only to confirm phase observability and suggest frames for visual review; no pose threshold classified a gate.",
+      "Event-onset frames are the first visually discernible descent frames and carry medium timing confidence because initial motion is subtle.",
+      "This is an AI-assisted prelabel and requires independent human gate-by-gate confirmation before it counts as ground truth."
+    ]
+  },
+  "tempo_control_definition": {
+    "version": "manual_v1",
+    "description": "Judge visible control independently from phase duration; a fast rep is not automatically a failure.",
+    "pass_criteria": [
+      "Descent and ascent remain visibly intentional without a judged loss of control."
+    ],
+    "fail_criteria": [
+      "A visible collapse, uncontrolled bounce, or uncontrolled direction change occurs."
+    ],
+    "unknown_criteria": [
+      "Occlusion, framing, playback quality, or missing frames prevent a reliable judgment."
+    ]
+  },
+  "reps": [
+    {
+      "index": 1,
+      "counted": true,
+      "events": {
+        "start": { "source_frame_index": 1056, "timestamp_s": 35.215 },
+        "bottom": { "source_frame_index": 1143, "timestamp_s": 38.116667 },
+        "end": { "source_frame_index": 1176, "timestamp_s": 39.216667 }
+      },
+      "standing_reference_window": {
+        "start": { "source_frame_index": 1035, "timestamp_s": 34.515 },
+        "end": { "source_frame_index": 1050, "timestamp_s": 35.015 }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The visible near-side hip crease is below the top of the near-side knee at the labeled bottom frame."]
+        },
+        "lockout": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The end frame returns to the stable hip and knee extension visible in the labeled standing-reference window."]
+        },
+        "tempo_control": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The 4.002-second rep shows a continuous intentional descent and ascent without visible collapse or an uncontrolled direction change."]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "sufficient",
+      "capture_notes": ["Near-side right-leg evidence is visually usable; initial descent onset is subtle."]
+    },
+    {
+      "index": 2,
+      "counted": true,
+      "events": {
+        "start": { "source_frame_index": 1194, "timestamp_s": 39.816667 },
+        "bottom": { "source_frame_index": 1257, "timestamp_s": 41.916667 },
+        "end": { "source_frame_index": 1290, "timestamp_s": 43.018333 }
+      },
+      "standing_reference_window": {
+        "start": { "source_frame_index": 1179, "timestamp_s": 39.316667 },
+        "end": { "source_frame_index": 1191, "timestamp_s": 39.716667 }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The visible near-side hip crease is below the top of the near-side knee at the labeled bottom frame."]
+        },
+        "lockout": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The end frame returns to the stable hip and knee extension visible in the labeled standing-reference window."]
+        },
+        "tempo_control": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The 3.202-second rep shows a continuous intentional descent and ascent without visible collapse or an uncontrolled direction change."]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "sufficient",
+      "capture_notes": ["Near-side right-leg evidence is visually usable; initial descent onset is subtle."]
+    },
+    {
+      "index": 3,
+      "counted": true,
+      "events": {
+        "start": { "source_frame_index": 1308, "timestamp_s": 43.618333 },
+        "bottom": { "source_frame_index": 1359, "timestamp_s": 45.318333 },
+        "end": { "source_frame_index": 1395, "timestamp_s": 46.52 }
+      },
+      "standing_reference_window": {
+        "start": { "source_frame_index": 1293, "timestamp_s": 43.118333 },
+        "end": { "source_frame_index": 1305, "timestamp_s": 43.518333 }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The visible near-side hip crease is below the top of the near-side knee at the labeled bottom frame."]
+        },
+        "lockout": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The end frame returns to the stable hip and knee extension visible in the labeled standing-reference window."]
+        },
+        "tempo_control": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The 2.902-second rep shows a continuous intentional descent and ascent without visible collapse or an uncontrolled direction change."]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "sufficient",
+      "capture_notes": ["Near-side right-leg evidence is visually usable; initial descent onset is subtle."]
+    },
+    {
+      "index": 4,
+      "counted": true,
+      "events": {
+        "start": { "source_frame_index": 1413, "timestamp_s": 47.12 },
+        "bottom": { "source_frame_index": 1473, "timestamp_s": 49.12 },
+        "end": { "source_frame_index": 1503, "timestamp_s": 50.121667 }
+      },
+      "standing_reference_window": {
+        "start": { "source_frame_index": 1398, "timestamp_s": 46.62 },
+        "end": { "source_frame_index": 1410, "timestamp_s": 47.02 }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The visible near-side hip crease is below the top of the near-side knee at the labeled bottom frame."]
+        },
+        "lockout": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The end frame returns to the stable hip and knee extension visible in the labeled standing-reference window."]
+        },
+        "tempo_control": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The 3.002-second rep shows a continuous intentional descent and ascent without visible collapse or an uncontrolled direction change."]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "sufficient",
+      "capture_notes": ["Near-side right-leg evidence is visually usable; initial descent onset is subtle."]
+    },
+    {
+      "index": 5,
+      "counted": true,
+      "events": {
+        "start": { "source_frame_index": 1530, "timestamp_s": 51.021667 },
+        "bottom": { "source_frame_index": 1587, "timestamp_s": 52.921667 },
+        "end": { "source_frame_index": 1629, "timestamp_s": 54.323333 }
+      },
+      "standing_reference_window": {
+        "start": { "source_frame_index": 1515, "timestamp_s": 50.521667 },
+        "end": { "source_frame_index": 1527, "timestamp_s": 50.921667 }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The visible near-side hip crease is below the top of the near-side knee at the labeled bottom frame."]
+        },
+        "lockout": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The end frame returns to the stable hip and knee extension visible in the labeled standing-reference window."]
+        },
+        "tempo_control": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The 3.302-second rep shows a continuous intentional descent and ascent without visible collapse or an uncontrolled direction change."]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "sufficient",
+      "capture_notes": ["Near-side right-leg evidence is visually usable; initial descent onset is subtle."]
+    },
+    {
+      "index": 6,
+      "counted": true,
+      "events": {
+        "start": { "source_frame_index": 1659, "timestamp_s": 55.323333 },
+        "bottom": { "source_frame_index": 1719, "timestamp_s": 57.323333 },
+        "end": { "source_frame_index": 1761, "timestamp_s": 58.725 }
+      },
+      "standing_reference_window": {
+        "start": { "source_frame_index": 1644, "timestamp_s": 54.823333 },
+        "end": { "source_frame_index": 1656, "timestamp_s": 55.223333 }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The visible near-side hip crease is below the top of the near-side knee at the labeled bottom frame."]
+        },
+        "lockout": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The end frame returns to the stable hip and knee extension visible in the labeled standing-reference window."]
+        },
+        "tempo_control": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The 3.402-second rep shows a continuous intentional descent and ascent without visible collapse or an uncontrolled direction change."]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "sufficient",
+      "capture_notes": ["Near-side right-leg evidence is visually usable; initial descent onset is subtle."]
+    },
+    {
+      "index": 7,
+      "counted": true,
+      "events": {
+        "start": { "source_frame_index": 1815, "timestamp_s": 60.525 },
+        "bottom": { "source_frame_index": 1910, "timestamp_s": 63.693333 },
+        "end": { "source_frame_index": 1959, "timestamp_s": 65.326667 }
+      },
+      "standing_reference_window": {
+        "start": { "source_frame_index": 1797, "timestamp_s": 59.925 },
+        "end": { "source_frame_index": 1812, "timestamp_s": 60.425 }
+      },
+      "gates": {
+        "depth": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The visible near-side hip crease is below the top of the near-side knee at the labeled bottom frame."]
+        },
+        "lockout": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The end frame returns to the stable hip and knee extension visible in the labeled standing-reference window."]
+        },
+        "tempo_control": {
+          "status": "pass",
+          "label_confidence": "medium",
+          "evidence_sufficiency": "sufficient",
+          "notes": ["The 4.802-second rep shows a continuous intentional descent and ascent without visible collapse or an uncontrolled direction change."]
+        }
+      },
+      "label_confidence": "medium",
+      "evidence_sufficiency": "sufficient",
+      "capture_notes": ["Near-side right-leg evidence is visually usable; initial descent onset is subtle."]
+    }
+  ]
+}

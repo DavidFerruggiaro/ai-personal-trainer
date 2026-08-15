@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "clip_id": "legacy_squat",
+  "source_video": {
+    "filename": "legacy_squat.mov",
+    "local_path": "legacy_squat.mov"
+  },
+  "exercise": "back_squat",
+  "camera_angle": "side",
+  "human_verified": {
+    "verified": true,
+    "verified_at": "2026-05-25",
+    "notes": "Synthetic legacy adapter fixture."
+  },
+  "reps": [
+    {
+      "index": 1,
+      "start_s": 0.0,
+      "bottom_s": 0.5,
+      "end_s": 1.0,
+      "counted": true,
+      "clean": true,
+      "failures": []
+    },
+    {
+      "index": 2,
+      "start_s": 1.5,
+      "bottom_s": 2.0,
+      "end_s": 2.5,
+      "counted": true,
+      "clean": false,
+      "failures": [
+        "depth"
+      ]
+    }
+  ]
+}

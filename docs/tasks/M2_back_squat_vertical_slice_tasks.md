@@ -1064,7 +1064,7 @@ Guardrails:
 Verification:
 
 - Focused `LivePoseEventChannel` and `TrainerActiveSetDeliveryCoordinator` tests.
-- All four Swift package suites.
+- All five Swift package suites.
 - `scripts/verify_native_ios.sh` host-architecture workspace Simulator builds of `TrainerApp` and `PoseBakeoff`.
 
 Result (2026-08-14):
@@ -1074,7 +1074,7 @@ Result (2026-08-14):
 - `consume`/`finishDeliveryBoundary` return `TrainerLivePoseConsumptionEffect`. `TrainerSetupGateController` sets `activeSetPoseFailure = .eventDeliveryDropped` only for `.deliveryDropMismatch`, so a failed non-drop ingestion keeps its original failure when a late boundary arrives.
 - M2.V1 still does not cover this boundary; its frozen package-contract scenario and exclusion wording remain accurate. M2.7a's ingestion/pipeline tests remain accurate for direct `begin`/`observe`/`stop`; they are not the queued `AsyncStream` Stop proof. This ticket is that deferred proof.
 - `TrainerSetupGateController` public methods and published property names are unchanged. `TrainerRootView` was not modified. Controller `AsyncStream` consumer ownership and CoreMotion stay in the app; workspace builds compile-verify that wiring.
-- Corrected verification passed with Swift 6.1.2 / Xcode 16.4: PoseCore (1 XCTest + 7 Swift Testing tests), SquatAnalysis (10), TrainerCore (56), TrainerRuntime (30), plus host-architecture Simulator workspace builds for both app schemes. The coordinator suite passed 80 consecutive reruns.
+- Corrected integrated verification passed with Swift 6.1.2 / Xcode 16.4: PoseCore (2 XCTest + 7 Swift Testing tests), SquatAnalysis (10), TrainerCore (56), TrainerRuntime (30), TrainerPersistence (10), all 21 Python evidence tests, plus host-architecture Simulator workspace builds for both app schemes. The coordinator suite passed 80 consecutive reruns on the source branch.
 - This does not prove AVFoundation capture, MediaPipe inference, CoreMotion stability, the controller drop-handler/`onCancel` MainActor hops as hops, SwiftUI interaction, physical Stop/review behavior, counted-rep accuracy, or clean gates.
 
 ### M2.15 Back Squat Vertical Slice Review

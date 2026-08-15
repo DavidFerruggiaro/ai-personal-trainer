@@ -1,6 +1,6 @@
 # Agent Workflow
 
-Last updated: 2026-07-25
+Last updated: 2026-08-14
 
 This document templates a lightweight GStack/GBrain-inspired workflow for this repo. It does not require GStack or GBrain to be installed yet.
 

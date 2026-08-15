@@ -108,7 +108,7 @@ Already implemented:
 - MediaPipe-backed live pose abstraction and `TrainerApp` camera flow
 - Foundation-only `TrainerCore` with 56 tests through M2.14a/M2.13a's `SetResult` boundary
 - Full-sequence finalization, durable structured auto-save, honest review, transactional correction replacement, discard rollback/deletion, and transient ended-session projection
-- `TrainerRuntime` analyzer-to-domain mapping plus a deterministic synthetic package-contract scenario
+- `TrainerRuntime` analyzer-to-domain mapping, deterministic synthetic package-contract scenario, and active-set delivery coordinator with 30 total tests
 - Versioned local-only `TrainerPersistence` with 10 isolated SwiftData tests and no heavy payload fields
 - `scripts/verify_native_ios.sh` as the one-command baseline for all five package suites and both single-architecture workspace Simulator builds
 

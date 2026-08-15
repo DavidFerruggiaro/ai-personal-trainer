@@ -1,6 +1,6 @@
 # M2 Back Squat Vertical Slice Tasks
 
-Last updated: 2026-07-25
+Last updated: 2026-08-14
 
 ## Milestone Goal
 
@@ -49,7 +49,7 @@ or End Workout -> Workout Summary -> Done
 
 ## Current Execution Boundary
 
-- M2.1-M2.4, M2.5a, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, M2.14a, and M2.V1 are done.
+- M2.1-M2.4, M2.5a, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, M2.14a, M2.V1, and M2.V2 are done.
 - M2.6, M2.10, and parent M2.14 retain the timing, clean-evidence, or deferred physical gates documented in their result sections.
 - M2.13 persistence has not started; the M2.14a summary is transient and in memory only.
 - The 2026-08-03 physical pass is recorded in `docs/design_reviews/2026-08-03_m2_physical_acceptance.md`. Multi-set summary inspection is deliberately deferred until the next natural multi-set workout.
@@ -1020,6 +1020,44 @@ Result (2026-07-24, corrected 2026-07-25):
 - Added a deterministic package-contract scenario that feeds synthetic normalized full-body frames through setup evidence and ordered active-set ingestion, verifies streaming and batch counted-rep agreement, maps the result, auto-completes a `QuickSession`, and projects the ended-session summary without inventing clean evidence. Its deliberately frozen test configuration does not cover production defaults, `TrainerSetupGateController` wiring, controller `AsyncStream` behavior, or queued Stop handling.
 - Corrected verification passed with Swift 6.1.2 / Xcode 16.4: PoseCore (1 XCTest + 3 Swift Testing tests), SquatAnalysis (10), TrainerCore (53), TrainerRuntime (19), plus host-architecture Simulator workspace builds for both app schemes.
 - This result proves deterministic package contracts and compilation only. It does not exercise AVFoundation camera input, MediaPipe landmark generation, CoreMotion, overlay geometry, SwiftUI interactions, physical Stop/review/edit/discard behavior, or real-world pose accuracy. All existing physical gates remain open.
+
+### M2.V2 Verify Active-Set Event-Delivery Boundary
+
+Status: done
+
+Goal:
+
+Make the production active-set event-delivery boundary deterministically verifiable on the host without a camera, MediaPipe, CoreMotion, Simulator runtime, or physical device.
+
+Scoped behavior:
+
+- Extract the generic live-event channel (serial delivery queue, `bufferingNewest(120)`, source sequence, drop count/coalescing, queued delivery barrier) into `PoseCore.LivePoseEventChannel`.
+- Extract active-set begin snapshot, freeze continuations, fail-closed drop handling, and shutdown/cancel resume into `TrainerRuntime.TrainerActiveSetDeliveryCoordinator`.
+- Keep `@Published` UI state, CoreMotion, and the long-lived `AsyncStream` consumer on `TrainerSetupGateController`.
+- Do not change `TrainerRootView`, Xcode project files, counted-rep thresholds, or clean-rep semantics.
+
+Guardrails:
+
+- Do not put trainer-specific active-set lifecycle into PoseCore.
+- Do not move AVFoundation or MediaPipe into a domain package.
+- Do not invent clean-rep gates or weaken fail-closed behavior.
+- Controller wiring is compile-verified through workspace Simulator builds, not host-executed as an app test.
+
+Verification:
+
+- Focused `LivePoseEventChannel` and `TrainerActiveSetDeliveryCoordinator` tests.
+- All four Swift package suites.
+- `scripts/verify_native_ios.sh` host-architecture workspace Simulator builds of `TrainerApp` and `PoseBakeoff`.
+
+Result (2026-08-14):
+
+- Characterization tests on the production channel and coordinator cover: atomic start snapshot and pre-start exclusion with the consumer gated so those frames stay undrained, queued Stop-boundary FIFO after immediate enqueue confirmation, pre-start loss absorbed into the baseline, in-set `bufferingNewest(120)` overflow fail-closed with the consumer gated during flood, pending-freeze drop/shutdown/cancel resume exactly once while the boundary is held, a late boundary after a retention failure remaining `.deliveryBoundaryIgnored` rather than a delivery drop, consecutive sets on one uninterrupted consumer without prior-frame leakage, and production-default `TrainerPoseObservationPipeline()` composition via `sequence.analyzerConfiguration == SquatAnalysisConfiguration()`.
+- Overflow tests pause the test-owned consumer so it cannot drain while the channel is flooded. FIFO/post-boundary tests use immediate forwarding after enqueue confirmation. Pending-freeze drop/shutdown/cancel tests hold the requested boundary until after the interrupting action, then forward it and assert `.deliveryBoundaryIgnored`. Cancel tests discard before beginning the next set.
+- `consume`/`finishDeliveryBoundary` return `TrainerLivePoseConsumptionEffect`. `TrainerSetupGateController` sets `activeSetPoseFailure = .eventDeliveryDropped` only for `.deliveryDropMismatch`, so a failed non-drop ingestion keeps its original failure when a late boundary arrives.
+- M2.V1 still does not cover this boundary; its frozen package-contract scenario and exclusion wording remain accurate. M2.7a's ingestion/pipeline tests remain accurate for direct `begin`/`observe`/`stop`; they are not the queued `AsyncStream` Stop proof. This ticket is that deferred proof.
+- `TrainerSetupGateController` public methods and published property names are unchanged. `TrainerRootView` was not modified. Controller `AsyncStream` consumer ownership and CoreMotion stay in the app; workspace builds compile-verify that wiring.
+- Corrected verification passed with Swift 6.1.2 / Xcode 16.4: PoseCore (1 XCTest + 7 Swift Testing tests), SquatAnalysis (10), TrainerCore (56), TrainerRuntime (30), plus host-architecture Simulator workspace builds for both app schemes. The coordinator suite passed 80 consecutive reruns.
+- This does not prove AVFoundation capture, MediaPipe inference, CoreMotion stability, the controller drop-handler/`onCancel` MainActor hops as hops, SwiftUI interaction, physical Stop/review behavior, counted-rep accuracy, or clean gates.
 
 ### M2.15 Back Squat Vertical Slice Review
 

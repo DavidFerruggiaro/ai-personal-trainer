@@ -1,6 +1,6 @@
 # Native Rebuild Agent Handoff
 
-Last updated: 2026-08-03
+Last updated: 2026-08-14
 
 ## Purpose
 
@@ -40,10 +40,10 @@ Native rebuild additions:
 - `ios/PoseBakeoff/`: internal pose-engine test app.
 - `ios/TrainerApp/`: user-facing Back Squat quick-start app with live setup, arming, countdown, active capture, full-sequence finalization, review, correction, discard, and a transient end-workout summary.
 - `ios/Shared/Sources/MediaPipePoseMapper.swift`: shared MediaPipe → PoseCore landmark mapping used by both apps.
-- `ios/Packages/PoseCore/`: normalized pose types, estimator protocol, live-pose stream contracts, setup evidence extractor.
+- `ios/Packages/PoseCore/`: normalized pose types, estimator protocol, live-pose stream contracts including `LivePoseEventChannel`, setup evidence extractor.
 - `ios/Packages/SquatAnalysis/`: squat analysis package; production streaming analyzer now emits conservative provisional counted reps while keeping clean-gate status explicitly unassessed.
 - `ios/Packages/TrainerCore/`: Foundation-only app-domain package: quick session, catalog, load, setup gate, signal window, start-set arming, countdown, active-set capture, finalized set summaries, ordered user corrections, review-discard rollback, and immutable ended-session projections.
-- `ios/Packages/TrainerRuntime/`: testable app-runtime composition for optional setup evidence and ordered, bounded active-set pose retention/streaming analysis. It may depend on pose/analysis/domain packages; `TrainerCore` remains dependency-free.
+- `ios/Packages/TrainerRuntime/`: testable app-runtime composition for optional setup evidence, ordered bounded active-set pose retention/streaming analysis, and `TrainerActiveSetDeliveryCoordinator`. It may depend on pose/analysis/domain packages; `TrainerCore` remains dependency-free.
 - `ios/Packages/TrainerRuntime/Sources/TrainerRuntime/TrainerSetAnalysisMapper.swift`: tested production adapter from analyzer output into the Foundation-only app-domain summary.
 - `scripts/verify_native_ios.sh`: deterministic native verification command for all package suites and both single-architecture workspace Simulator builds, with isolated temporary caches/DerivedData and a package-only quick mode.
 - `ios/SquatTrainer.xcodeproj` + `ios/SquatTrainer.xcworkspace`: always open the **workspace** (CocoaPods MediaPipe for both apps).
@@ -229,6 +229,7 @@ Current M1 state:
 - M2.14a is done: ending a quick session produces an immutable Foundation-only snapshot of non-discarded completed sets using corrected values and honest clean-evidence provenance. Per-set units remain separate, and count totals fail closed if evidence is missing.
 - `TrainerApp` now replaces a nonempty ended workout with a minimal transient summary and shuts down camera/runtime work first. It shows set rows, counted totals, clean provenance, and low-confidence captures; it does not claim recurring issues, persist history, or calculate mixed-unit volume. Empty sessions dismiss directly.
 - M2.V1 is done and consolidated on the checkpoint branch: one command now runs the complete offline package/build baseline, the analyzer-summary mapping no longer lives privately in SwiftUI, and a deterministic synthetic package-contract scenario composes PoseCore, TrainerRuntime, SquatAnalysis, and TrainerCore. It does not cover production-default configuration, controller wiring, `AsyncStream`, or queued Stop behavior, and it closes no physical or pose-accuracy gate.
+- M2.V2 is done: host tests of `LivePoseEventChannel` and `TrainerActiveSetDeliveryCoordinator` cover the queued delivery boundary, fail-closed overflow, held pending-freeze resume, late-boundary failure provenance, consecutive-set reuse, and production-default analyzer configuration identity. `TrainerSetupGateController` still owns UI state and the long-lived consumer; that wiring is compile-verified, not host-executed. See `docs/tasks/M2_back_squat_vertical_slice_tasks.md` M2.V2.
 
 ### Milestone 2: Back Squat Vertical Slice
 
@@ -695,7 +696,7 @@ Current boundary:
 
 1. M1.12 is complete with MediaPipe selected for M2 implementation.
 2. M1.11 is complete: separate standing and squat artifacts pass the portrait physical-device viability protocol.
-3. M2.1 through M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, and M2.14a are complete. M2.6 stays open for duration choices, failure behavior, and physical confirmation of the installed transition candidate. M2.10 stays open for real clean gates; its normal and low-confidence review presentation now pass physically, while the offline evidence audit explicitly rejects threshold invention from the current positive-only/coarse dataset. Parent M2.14 stays open for deferred physical multi-set summary inspection.
+3. M2.1 through M2.5, M2.5a, M2.5b, M2.7, M2.7a, M2.8, M2.9, M2.11, M2.12, M2.14a, M2.V1, and M2.V2 are complete. M2.6 stays open for duration choices, failure behavior, and physical confirmation of the installed transition candidate. M2.10 stays open for real clean gates; its normal and low-confidence review presentation now pass physically, while the offline evidence audit explicitly rejects threshold invention from the current positive-only/coarse dataset. Parent M2.14 stays open for deferred physical multi-set summary inspection.
 4. Use `SquatTrainer.xcworkspace` for both `PoseBakeoff` and `TrainerApp` (MediaPipe via CocoaPods on both).
 5. Do not wire the rough M1 hip-dip detector into the user-facing app as production analysis.
 6. The production analyzer already separates counted reps from clean gates. Preserve that boundary; the Python state machine is reference logic, not a literal Swift specification.
@@ -706,6 +707,7 @@ Current boundary:
 11. The merged UI pass clarifies state/exit safety, zero/discard/rollback recovery, and adaptive review/summary accessibility without changing domain behavior. Standard-size physical review and discard/rollback recovery were exercised; larger-text, interruption, and summary layouts remain unverified.
 12. The product checkpoint excludes `.agents/` and `skills-lock.json`.
 13. Use `scripts/audit_clean_rep_evidence.py` for clean-gate observability replay. Before a native gate candidate, collect full-rate side-view barbell exports with independent pass/fail/unknown labels for depth, lockout, and tempo/control, including standing-reference windows and both classes per gate. Keep clean conclusions unavailable until held-out validation supports them.
+14. M2.V2 host-verifies the event-delivery boundary that M2.V1 excluded. `PoseCore` has 1 XCTest + 7 Swift Testing tests and `TrainerRuntime` has 30 tests. Pending-freeze tests hold the next boundary until after drop/shutdown/cancel. Delivery-drop UI labeling uses an explicit consumption effect, not a failed-phase check. Controller/camera wiring is compile-verified by workspace Simulator builds. It does not close physical, MediaPipe, CoreMotion, or accuracy gates.
 
 ## Open UX / Product Discussion (do not invent alone)
 

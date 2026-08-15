@@ -27,7 +27,7 @@ Use this as the operating rhythm for future agents and implementation sessions.
 
 2. Identify the current milestone.
    - Default current milestone: **Milestone 2, Back Squat Vertical Slice** (M1 bakeoff complete; MediaPipe selected).
-   - Current code boundary: M2.1-M2.5, M2.7-M2.9, M2.11, M2.12, M2.14a, M2.V1, and the analysis-summary mapping seam are complete. M2.6 retains countdown-choice/failure and measured transition-latency work; M2.10 retains real clean-evidence gates; parent M2.14 retains its deferred natural multi-set physical check.
+   - Current code boundary: M2.1-M2.5, M2.7-M2.9, M2.11, M2.12, M2.14a, M2.V1, M2.V2, and the analysis-summary mapping seam are complete. M2.6 retains countdown-choice/failure and measured transition-latency work; M2.10 retains real clean-evidence gates; parent M2.14 retains its deferred natural multi-set physical check.
    - M2.6 transition instrumentation is complete and a stable-preview-identity candidate is installed; physical confirmation is deferred until a natural set. Do not infer later implementation work from ticket number alone.
 
 3. Pick one small ticket.

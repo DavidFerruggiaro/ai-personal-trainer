@@ -6,10 +6,10 @@ The current Python/Streamlit app remains the reference prototype. The native reb
 
 - `PoseBakeoff/`: internal measurement app for comparing pose engines.
 - `TrainerApp/`: user-facing Back Squat quick-session app with live setup, arming, countdown, active capture, provisional count, full-sequence finalization, durable structured set auto-save, post-set review, compact result correction, and a transient end-workout summary.
-- `Packages/PoseCore/`: shared pose schema, estimator/live-stream contracts, setup evidence, and export types.
+- `Packages/PoseCore/`: shared pose schema, estimator/live-stream contracts including `LivePoseEventChannel`, setup evidence, and export types.
 - `Packages/SquatAnalysis/`: production streaming squat-cycle detection plus bakeoff label/scoring tools. Clean-rep gates are modeled separately and are not yet assessed.
 - `Packages/TrainerCore/`: Foundation-only quick-session, setup-gate, arming, countdown, active-capture, finalized-summary, ordered-correction, review-discard, and ended-session projection state.
-- `Packages/TrainerRuntime/`: testable setup/pose/analysis runtime composition, including optional setup evidence, ordered bounded active-set pose ingestion, and the production analyzer-to-domain summary mapper. `TrainerCore` remains dependency-free.
+- `Packages/TrainerRuntime/`: testable setup/pose/analysis runtime composition, including optional setup evidence, ordered bounded active-set pose ingestion, `TrainerActiveSetDeliveryCoordinator`, and the production analyzer-to-domain summary mapper. `TrainerCore` remains dependency-free.
 - `Packages/TrainerPersistence/`: versioned local-only SwiftData models, validation, idempotent set upsert, correction replacement, discard deletion, and isolated/file-backed tests. It stores structured evidence and opaque artifact IDs only.
 
 ## Current Status
@@ -121,6 +121,7 @@ Current milestone boundary:
 19. The merged UI-only pass clarifies recording/processing/review state, controlled transient-session exit, camera failure, zero-result recovery, phase-accurate discard confirmation, rollback feedback, adaptive review editing, and multi-set summary accessibility. It does not change analysis, runtime, domain, or persistence behavior.
 20. Standard-size physical review and discard/rollback recovery were exercised. Recovery-notice hierarchy, redundant setup-phase chrome, one inconsistent zero-rep notice, camera interruption, larger-text layouts, and the multi-set summary remain follow-ups.
 21. M2.13a adds a Foundation-only `SetResult` and isolated versioned SwiftData package. Stable set IDs make full-sequence auto-save and correction updates idempotent; review discard deletes structured evidence and empty parents; active/failed/discarded partial captures never persist. A new-container file-backed reopen test passes, but physical save/terminate/relaunch acceptance remains, so M2.13 stays `in_progress`.
+22. M2.V2 host-verifies the queued event-delivery boundary that M2.V1 excluded. `LivePoseEventChannel` lives in PoseCore; `TrainerActiveSetDeliveryCoordinator` lives in TrainerRuntime; `TrainerSetupGateController` still owns UI state and the long-lived consumer. That controller wiring is compile-verified by workspace Simulator builds, not host-executed. Current package counts: PoseCore 2 XCTest + 7 Swift Testing tests, SquatAnalysis 10, TrainerCore 56, TrainerRuntime 30, TrainerPersistence 10.
 
 ## Package Checks
 

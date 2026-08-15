@@ -39,3 +39,22 @@ public protocol LivePoseStreaming: AnyObject {
     func start()
     func stop()
 }
+
+public struct LivePoseDeliveryBaseline: Equatable, Sendable {
+    public let latestObservationSequence: UInt64?
+    public let eventDeliveryDropCount: UInt64
+
+    public init(
+        latestObservationSequence: UInt64?,
+        eventDeliveryDropCount: UInt64
+    ) {
+        self.latestObservationSequence = latestObservationSequence
+        self.eventDeliveryDropCount = eventDeliveryDropCount
+    }
+}
+
+public protocol LivePoseEventDelivering: AnyObject {
+    var eventDeliveryDropCount: UInt64 { get }
+
+    func enqueueDeliveryBoundary(_ id: UUID)
+}
